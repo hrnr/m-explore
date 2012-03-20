@@ -173,7 +173,7 @@ void ExploreFrontier::findFrontiers(Costmap2DROS& costmap_) {
 
   map_.info.width = w;
   map_.info.height = h;
-  map_.set_data_size(size);
+  map_.data.resize((size_t)size);
   map_.info.resolution = costmap.getResolution();
   map_.info.origin.position.x = costmap.getOriginX();
   map_.info.origin.position.y = costmap.getOriginY();

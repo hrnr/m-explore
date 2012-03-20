@@ -135,7 +135,7 @@ bool Explore::mapCallback(nav_msgs::GetMap::Request  &req,
   int size = res.map.info.width * res.map.info.height;
   const unsigned char* map = explore_costmap.getCharMap();
 
-  res.map.set_data_size(size);
+  res.map.data.resize((size_t)size);
   for (int i=0; i<size; i++) {
     if (map[i] == NO_INFORMATION)
       res.map.data[i] = -1;
@@ -169,7 +169,7 @@ void Explore::publishMap() {
   int size = map.info.width * map.info.height;
   const unsigned char* char_map = explore_costmap.getCharMap();
 
-  map.set_data_size(size);
+  map.data.resize((size_t)size);
   for (int i=0; i<size; i++) {
     if (char_map[i] == NO_INFORMATION)
       map.data[i] = -1;
