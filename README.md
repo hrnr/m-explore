@@ -1,2 +1,2 @@
 # map_merging
-A ROS package that provides a node for merging mutiple maps by knowing the initial relative positions of robots.
+A ROS package that provides a node for merging multiple maps with knowledge of the initial relative positions of robots.
