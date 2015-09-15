@@ -42,7 +42,7 @@
 #include <geometry_msgs/Pose.h>
 #include <visualization_msgs/Marker.h>
 
-#include <LinearMath/btVector3.h>
+#include <tf/LinearMath/Vector3.h>
 
 #include <costmap_2d/costmap_2d_ros.h>
 #include <navfn/navfn_ros.h>
@@ -52,9 +52,9 @@ namespace explore {
 
 struct FrontierPoint{
   int idx;     //position
-  btVector3 d; //direction
+  tf::Vector3 d; //direction
 
-  FrontierPoint(int idx_, btVector3 d_) : idx(idx_), d(d_) {};
+  FrontierPoint(int idx_, tf::Vector3 d_) : idx(idx_), d(d_) {};
 };
 
 struct Frontier {

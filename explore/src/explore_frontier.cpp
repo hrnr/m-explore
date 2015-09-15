@@ -225,22 +225,22 @@ void ExploreFrontier::findFrontiers(Costmap2DROS& costmap_) {
         neighbors.pop_back();
         map_.data[idx] = segment_id;
 
-        btVector3 tot(0,0,0);
+        tf::Vector3 tot(0,0,0);
         int c = 0;
         if ((idx+1 < size) && (map[idx+1] == NO_INFORMATION)) {
-          tot += btVector3(1,0,0);
+          tot += tf::Vector3(1,0,0);
           c++;
         }
         if ((idx-1 >= 0) && (map[idx-1] == NO_INFORMATION)) {
-          tot += btVector3(-1,0,0);
+          tot += tf::Vector3(-1,0,0);
           c++;
         }
         if ((idx+w < size) && (map[idx+w] == NO_INFORMATION)) {
-          tot += btVector3(0,1,0);
+          tot += tf::Vector3(0,1,0);
           c++;
         }
         if ((idx-w >= 0) && (map[idx-w] == NO_INFORMATION)) {
-          tot += btVector3(0,-1,0);
+          tot += tf::Vector3(0,-1,0);
           c++;
         }
         assert(c > 0);
@@ -286,7 +286,7 @@ void ExploreFrontier::findFrontiers(Costmap2DROS& costmap_) {
       continue;
 
     float x = 0, y = 0;
-    btVector3 d(0,0,0);
+    tf::Vector3 d(0,0,0);
 
     for (uint j=0; j<size; j++) {
       d += segment[j].d;
