@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<package>
+  <name>explore</name>
+  <version>0.0.0</version>
+  <description>frontier based exploration</description>
+
+  <author email="laeqten@gmail.com">Jiri Horner</author>
+  <author>Charles DuHadway</author>
+  <maintainer email="laeqten@gmail.com">Jiri Horner</maintainer>
+  <license>BSD</license>
+
+  <!-- original project URI -->
+  <!-- <url>http://ros.org/wiki/explore</url> -->
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>roscpp</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>move_base_msgs</build_depend>
+  <build_depend>visualization_msgs</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>nav_msgs</build_depend>
+  <build_depend>actionlib_msgs</build_depend>
+  <build_depend>tf</build_depend>
+  <build_depend>costmap_2d</build_depend>
+  <build_depend>actionlib</build_depend>
+  <build_depend>navfn</build_depend>
+  <build_depend>roslaunch</build_depend>
+
+  <run_depend>roscpp</run_depend>
+  <run_depend>tf</run_depend>
+  <run_depend>costmap_2d</run_depend>
+  <run_depend>actionlib</run_depend>
+  <run_depend>actionlib_msgs</run_depend>
+  <run_depend>costmap_2d</run_depend>
+  <run_depend>navfn</run_depend>
+</package>

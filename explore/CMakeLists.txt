@@ -1,29 +1,78 @@
-cmake_minimum_required(VERSION 2.4.6)
-include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
+cmake_minimum_required(VERSION 2.8.3)
+project(explore)
 
-# Set the build type.  Options are:
-#  Coverage       : w/ debug symbols, w/o optimization, w/ code-coverage
-#  Debug          : w/ debug symbols, w/o optimization
-#  Release        : w/o debug symbols, w/ optimization
-#  RelWithDebInfo : w/ debug symbols, w/ optimization
-#  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
-set(ROS_BUILD_TYPE Release)
+## Find catkin macros and libraries
+find_package(catkin REQUIRED COMPONENTS
+  roscpp
+  std_msgs
+  move_base_msgs
+  visualization_msgs
+  geometry_msgs
+  nav_msgs
+  actionlib_msgs
+  tf
+  costmap_2d
+  actionlib
+  navfn
+  roslaunch
+ )
 
-rosbuild_init()
+find_package(Boost REQUIRED COMPONENTS thread)
 
-#set the default path for built executables to the "bin" directory
-set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
-#set the default path for built libraries to the "lib" directory
-set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
+################################################
+## Declare ROS messages, services and actions ##
+################################################
 
-rosbuild_add_boost_directories()
+###################################
+## catkin specific configuration ##
+###################################
+catkin_package(
+  INCLUDE_DIRS include
+#  LIBRARIES p3dx_dpl
+#  CATKIN_DEPENDS tf
+#  DEPENDS system_lib
+)
 
-# Library
-rosbuild_add_library(explore_lib src/explore_frontier.cpp src/loop_closure.cpp)
+###########
+## Build ##
+###########
+# c++11 support required
+include(CheckCXXCompilerFlag)
+CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
+if(COMPILER_SUPPORTS_CXX11)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+else()
+        message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
+endif()
+
+## Specify additional locations of header files
+include_directories(
+  ${catkin_INCLUDE_DIRS}
+  ${Boost_INCLUDE_DIRS}
+  include
+)
+
+add_library(explore_lib
+	src/explore_frontier.cpp
+	src/loop_closure.cpp)
 set_target_properties(explore_lib
                       PROPERTIES OUTPUT_NAME "explore")
-rosbuild_link_boost(explore_lib thread)
 
-# Explore
-rosbuild_add_executable(explore src/explore.cpp)
+add_executable(explore src/explore.cpp)
+target_link_libraries(explore ${catkin_LIBRARIES})
 target_link_libraries(explore explore_lib)
+
+#############
+## Install ##
+#############
+
+# install roslaunch files
+install(DIRECTORY launch/
+    DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch)
+
+#############
+## Testing ##
+#############
+
+# test all launch files
+roslaunch_add_file_check(launch)
