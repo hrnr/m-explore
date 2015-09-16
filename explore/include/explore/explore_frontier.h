@@ -54,14 +54,13 @@ struct FrontierPoint{
   int idx;     //position
   tf::Vector3 d; //direction
 
-  FrontierPoint(int idx_, tf::Vector3 d_) : idx(idx_), d(d_) {};
+  FrontierPoint(int idx_, tf::Vector3 d_) : idx(idx_), d(d_) {}
 };
 
 struct Frontier {
   geometry_msgs::Pose pose;
   int size;
   Frontier():pose(),size(0) {}
-  Frontier(const Frontier& copy) { pose = copy.pose; size = copy.size; }
 };
 
 struct WeightedFrontier {
@@ -91,7 +90,7 @@ protected:
    * @brief Finds frontiers and populates frontiers_
    * @param costmap The costmap to search for frontiers
    */
-  virtual void findFrontiers(costmap_2d::Costmap2DROS& costmap_);
+  virtual void findFrontiers(costmap_2d::Costmap2DROS& costmap);
 
   /**
    * @brief Calculates cost to explore frontier
@@ -130,7 +129,7 @@ public:
    * @param start The current position of the robot
    * @param goals Will be filled with sorted list of current goals
    * @param planner A planner to evaluate the cost of going to any frontier
-   * @param potential_scale A scaling for the potential to a frontier goal point for the frontier's cost
+   * @param cost_scale A scaling for the potential to a frontier goal point for the frontier's cost
    * @param orientation_scale A scaling for the change in orientation required to get to a goal point for the frontier's cost
    * @param gain_scale A scaling for the expected information gain to get to a goal point for the frontier's cost
    * @return True if at least one frontier was found
@@ -143,7 +142,7 @@ public:
    * improves the robustness of goals which may lie near other obstacles
    * which would prevent planning.
    */
-  virtual bool getExplorationGoals(costmap_2d::Costmap2DROS& costmap, tf::Stamped<tf::Pose> robot_pose, navfn::NavfnROS* planner, std::vector<geometry_msgs::Pose>& goals, double cost_scale, double orientation_scale, double gain_scale);
+  virtual bool getExplorationGoals(costmap_2d::Costmap2DROS& costmap, tf::Stamped<tf::Pose> start, navfn::NavfnROS* planner, std::vector<geometry_msgs::Pose>& goals, double cost_scale, double orientation_scale, double gain_scale);
 
   /**
    * @brief  Returns markers representing all frontiers
