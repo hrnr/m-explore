@@ -100,7 +100,11 @@ float ExploreFrontier::getFrontierGain(const Frontier& frontier, double map_reso
 
 bool ExploreFrontier::getExplorationGoals(Costmap2DROS& costmap, tf::Stamped<tf::Pose> robot_pose, navfn::NavfnROS* planner, std::vector<geometry_msgs::Pose>& goals, double potential_scale, double orientation_scale, double gain_scale)
 {
+  Costmap2D *costmap2d = costmap.getCostmap();
+  LayeredCostmap *layered_costmap = costmap.getLayeredCostmap();
+
   findFrontiers(costmap);
+
   if (frontiers_.size() == 0)
     return false;
 
@@ -112,12 +116,12 @@ bool ExploreFrontier::getExplorationGoals(Costmap2DROS& costmap, tf::Stamped<tf:
   planner->computePotential(start);
 
   planner_ = planner;
-  costmapResolution_ = costmap.getResolution();
+  costmapResolution_ = costmap2d->getResolution();
 
   //we'll make sure that we set goals for the frontier at least the circumscribed
   //radius away from unknown space
   float step = -1.0 * costmapResolution_;
-  int c = ceil(costmap.getCircumscribedRadius() / costmapResolution_);
+  int c = ceil(layered_costmap->getCircumscribedRadius() / costmapResolution_);
   WeightedFrontier goal;
   std::vector<WeightedFrontier> weightedFrontiers;
   weightedFrontiers.reserve(frontiers_.size() * c);
@@ -163,23 +167,23 @@ bool ExploreFrontier::getExplorationGoals(Costmap2DROS& costmap, tf::Stamped<tf:
 void ExploreFrontier::findFrontiers(Costmap2DROS& costmap_) {
   frontiers_.clear();
 
-  Costmap2D costmap;
-  costmap_.getCostmapCopy(costmap);
+  Costmap2D *costmap = costmap_.getCostmap();
+  LayeredCostmap* layered_costmap = costmap_.getLayeredCostmap();
 
   int idx;
-  int w = costmap.getSizeInCellsX();
-  int h = costmap.getSizeInCellsY();
+  int w = costmap->getSizeInCellsX();
+  int h = costmap->getSizeInCellsY();
   int size = (w * h);
 
   map_.info.width = w;
   map_.info.height = h;
   map_.data.resize((size_t)size);
-  map_.info.resolution = costmap.getResolution();
-  map_.info.origin.position.x = costmap.getOriginX();
-  map_.info.origin.position.y = costmap.getOriginY();
+  map_.info.resolution = costmap->getResolution();
+  map_.info.origin.position.x = costmap->getOriginX();
+  map_.info.origin.position.y = costmap->getOriginY();
 
   // Find all frontiers (open cells next to unknown cells).
-  const unsigned char* map = costmap.getCharMap();
+  const unsigned char* map = costmap->getCharMap();
   for (idx = 0; idx < size; idx++) {
 //    //get the world point for the index
 //    unsigned int mx, my;
@@ -282,7 +286,7 @@ void ExploreFrontier::findFrontiers(Costmap2DROS& costmap_) {
     uint size = segment.size();
 
     //we want to make sure that the frontier is big enough for the robot to fit through
-    if (size * costmap.getResolution() < costmap.getInscribedRadius())
+    if (size * costmap->getResolution() < layered_costmap->getInscribedRadius())
       continue;
 
     float x = 0, y = 0;
@@ -299,7 +303,7 @@ void ExploreFrontier::findFrontiers(Costmap2DROS& costmap_) {
     frontier.pose.position.y = map_.info.origin.position.y + map_.info.resolution * (y / size);
     frontier.pose.position.z = 0.0;
 
-    frontier.pose.orientation = tf::createQuaternionMsgFromYaw(btAtan2(d.y(), d.x()));
+    frontier.pose.orientation = tf::createQuaternionMsgFromYaw(atan2(d.y(), d.x()));
     frontier.size = size;
 
     frontiers_.push_back(frontier);

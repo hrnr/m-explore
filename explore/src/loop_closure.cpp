@@ -360,8 +360,7 @@ LoopClosure::checkLoopClosure(const tf::Pose& pose, std::vector<GraphNode*>& can
   planner_->computePotential(planner_start.pose.position);
 
   //get a copy of the costmap that we can do raytracing on
-  costmap_2d::Costmap2D visibility_map;
-  costmap_.getCostmapCopy(visibility_map);
+  costmap_2d::Costmap2D *visibility_map = costmap_.getCostmap();
 
   for(std::vector<GraphNode*>::iterator it = nodes_.begin();
       it != nodes_.end();
@@ -405,25 +404,25 @@ LoopClosure::checkLoopClosure(const tf::Pose& pose, std::vector<GraphNode*>& can
           {
             //also check that there is visibility from one node to the other
             bool is_visible = true;
-            VisibilityChecker checker(visibility_map.getCharMap(), is_visible);
+            VisibilityChecker checker(visibility_map->getCharMap(), is_visible);
 
             //get map coordinates
             bool in_bounds = true;
             unsigned int x0, y0;
-            if(!visibility_map.worldToMap(pose.getOrigin().x(), pose.getOrigin().y(), x0, y0)){
+            if(!visibility_map->worldToMap(pose.getOrigin().x(), pose.getOrigin().y(), x0, y0)){
               ROS_WARN("Attempting to check visibility from a point off the map... this should never happen");
               in_bounds = false;
             }
 
             unsigned int x1, y1;
-            if(!visibility_map.worldToMap((*it)->pose_.getOrigin().x(), (*it)->pose_.getOrigin().y(), x1, y1)){
+            if(!visibility_map->worldToMap((*it)->pose_.getOrigin().x(), (*it)->pose_.getOrigin().y(), x1, y1)){
               ROS_WARN("Attempting to check visibility to a point off the map... this should never happen");
               in_bounds = false;
             }
 
             if(in_bounds){
               //raytrace a line with our visibility checker
-              raytraceLine(checker, x0, y0, x1, y1, visibility_map.getSizeInCellsX());
+              raytraceLine(checker, x0, y0, x1, y1, visibility_map->getSizeInCellsX());
 
               //check if we have visibility to the node
               if(is_visible){

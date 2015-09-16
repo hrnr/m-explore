@@ -86,7 +86,8 @@ Explore::Explore() :
   private_nh.param("gain_scale", gain_scale_, 1.0);
 
   explore_costmap_ros_ = new Costmap2DROS(std::string("explore_costmap"), tf_);
-  explore_costmap_ros_->clearRobotFootprint();
+  // TODO is this necessary?
+  // explore_costmap_ros_->clearRobotFootprint();
 
   planner_ = new navfn::NavfnROS(std::string("explore_planner"), explore_costmap_ros_);
   explorer_ = new ExploreFrontier();
@@ -118,14 +119,13 @@ bool Explore::mapCallback(nav_msgs::GetMap::Request  &req,
                           nav_msgs::GetMap::Response &res)
 {
   ROS_DEBUG("mapCallback");
-  Costmap2D explore_costmap;
-  explore_costmap_ros_->getCostmapCopy(explore_costmap);
+  Costmap2D *explore_costmap = explore_costmap_ros_->getCostmap();
 
-  res.map.info.width = explore_costmap.getSizeInCellsX();
-  res.map.info.height = explore_costmap.getSizeInCellsY();
-  res.map.info.resolution = explore_costmap.getResolution();
-  res.map.info.origin.position.x = explore_costmap.getOriginX();
-  res.map.info.origin.position.y = explore_costmap.getOriginY();
+  res.map.info.width = explore_costmap->getSizeInCellsX();
+  res.map.info.height = explore_costmap->getSizeInCellsY();
+  res.map.info.resolution = explore_costmap->getResolution();
+  res.map.info.origin.position.x = explore_costmap->getOriginX();
+  res.map.info.origin.position.y = explore_costmap->getOriginY();
   res.map.info.origin.position.z = 0;
   res.map.info.origin.orientation.x = 0;
   res.map.info.origin.orientation.y = 0;
@@ -133,7 +133,7 @@ bool Explore::mapCallback(nav_msgs::GetMap::Request  &req,
   res.map.info.origin.orientation.w = 1;
 
   int size = res.map.info.width * res.map.info.height;
-  const unsigned char* map = explore_costmap.getCharMap();
+  const unsigned char* map = explore_costmap->getCharMap();
 
   res.map.data.resize((size_t)size);
   for (int i=0; i<size; i++) {
@@ -152,14 +152,13 @@ void Explore::publishMap() {
   nav_msgs::OccupancyGrid map;
   map.header.stamp = ros::Time::now();
 
-  Costmap2D explore_costmap;
-  explore_costmap_ros_->getCostmapCopy(explore_costmap);
+  Costmap2D *explore_costmap = explore_costmap_ros_->getCostmap();
 
-  map.info.width = explore_costmap.getSizeInCellsX();
-  map.info.height = explore_costmap.getSizeInCellsY();
-  map.info.resolution = explore_costmap.getResolution();
-  map.info.origin.position.x = explore_costmap.getOriginX();
-  map.info.origin.position.y = explore_costmap.getOriginY();
+  map.info.width = explore_costmap->getSizeInCellsX();
+  map.info.height = explore_costmap->getSizeInCellsY();
+  map.info.resolution = explore_costmap->getResolution();
+  map.info.origin.position.x = explore_costmap->getOriginX();
+  map.info.origin.position.y = explore_costmap->getOriginY();
   map.info.origin.position.z = 0;
   map.info.origin.orientation.x = 0;
   map.info.origin.orientation.y = 0;
@@ -167,7 +166,7 @@ void Explore::publishMap() {
   map.info.origin.orientation.w = 1;
 
   int size = map.info.width * map.info.height;
-  const unsigned char* char_map = explore_costmap.getCharMap();
+  const unsigned char* char_map = explore_costmap->getCharMap();
 
   map.data.resize((size_t)size);
   for (int i=0; i<size; i++) {
@@ -210,7 +209,8 @@ void Explore::makePlan() {
   explore_costmap_ros_->getRobotPose(robot_pose);
 
   std::vector<geometry_msgs::Pose> goals;
-  explore_costmap_ros_->clearRobotFootprint();
+  // TODO is this necessary?
+  // explore_costmap_ros_->clearRobotFootprint();
   explorer_->getExplorationGoals(*explore_costmap_ros_, robot_pose, planner_, goals, potential_scale_, orientation_scale_, gain_scale_);
   if (goals.size() == 0)
     done_exploring_ = true;
@@ -283,12 +283,14 @@ void Explore::makePlan() {
 }
 
 bool Explore::goalOnBlacklist(const geometry_msgs::PoseStamped& goal){
+  Costmap2D *costmap2d = explore_costmap_ros_->getCostmap();
+
   //check if a goal is on the blacklist for goals that we're pursuing
   for(unsigned int i = 0; i < frontier_blacklist_.size(); ++i){
     double x_diff = fabs(goal.pose.position.x - frontier_blacklist_[i].pose.position.x);
     double y_diff = fabs(goal.pose.position.y - frontier_blacklist_[i].pose.position.y);
 
-    if(x_diff < 2 * explore_costmap_ros_->getResolution() && y_diff < 2 * explore_costmap_ros_->getResolution())
+    if(x_diff < 2 * costmap2d->getResolution() && y_diff < 2 * costmap2d->getResolution())
       return true;
   }
   return false;
