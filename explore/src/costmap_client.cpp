@@ -17,13 +17,39 @@ Costmap2DClient::Costmap2DClient(ros::NodeHandle nh, tf::TransformListener& tf) 
     tf_(tf),
     private_nh_(nh)
 {
-	init_translation_table();
+  /* initialize costmap */
+  std::string costmap_topic;
+  private_nh_.param("costmap_topic", costmap_topic, std::string("costmap"));
 
+  boost::function<void(const nav_msgs::OccupancyGrid::ConstPtr&)> costmap_cb =
+    std::bind(&Costmap2DClient::updateMap, this, std::placeholders::_1);
+  private_nh_.subscribe(costmap_topic, 1000, costmap_cb);
+  ROS_INFO("Waiting for costmap to become available, topic: %s",
+      costmap_topic.c_str());
+  auto costmap_msg = ros::topic::waitForMessage<nav_msgs::OccupancyGrid>(costmap_topic, private_nh_);
+  updateMap(costmap_msg);
+
+  /* initialize footprint */
+  std::string footprint_topic;
+  private_nh_.param("footprint_topic", footprint_topic, std::string("footprint_stamped"));
+
+  boost::function<void(const geometry_msgs::PolygonStamped::ConstPtr&)> footprint_cb =
+    std::bind(&Costmap2DClient::updateFootPrint, this, std::placeholders::_1);
+  private_nh_.subscribe(footprint_topic, 1000, footprint_cb);
+  ROS_INFO("Waiting for footprint to become available, topic: %s",
+      footprint_topic.c_str());
+  auto footprint_msg = ros::topic::waitForMessage<geometry_msgs::PolygonStamped>(footprint_topic, private_nh_);
+  updateFootPrint(footprint_msg);
+
+  /* tf transform necessary for getRobotPose */
   std::string tf_prefix = tf::getPrefixParam(private_nh_);
 
   // get two frames
   private_nh_.param("global_frame", global_frame_, std::string("map"));
   private_nh_.param("robot_base_frame", robot_base_frame_, std::string("base_link"));
+
+  // transform tolerance is used for all tf transforms here
+  private_nh_.param("transform_tolerance", transform_tolerance_, 0.3);
 
   // make sure that we set the frames appropriately based on the tf_prefix
   global_frame_ = tf::resolve(tf_prefix, global_frame_);
@@ -40,7 +66,7 @@ Costmap2DClient::Costmap2DClient(ros::NodeHandle nh, tf::TransformListener& tf) 
     if (last_error + ros::Duration(5.0) < ros::Time::now())
     {
       ROS_WARN("Timed out waiting for transform from %s to %s to become available "
-      					"before subscribing to costmap, tf error: %s",
+                "before subscribing to costmap, tf error: %s",
                robot_base_frame_.c_str(), global_frame_.c_str(), tf_error.c_str());
       last_error = ros::Time::now();
     }
@@ -48,28 +74,11 @@ Costmap2DClient::Costmap2DClient(ros::NodeHandle nh, tf::TransformListener& tf) 
     // will do for the warning above. Reset the string here to avoid accumulation.
     tf_error.clear();
   }
-
-  std::string costmap_topic;
-  private_nh_.param("costmap_topic", costmap_topic, std::string("costmap"));
-
-  boost::function<void(const nav_msgs::OccupancyGrid::ConstPtr&)> costmap_cb =
-  	std::bind(&Costmap2DClient::updateMap, this, std::placeholders::_1);
-  private_nh_.subscribe(costmap_topic, 1000, costmap_cb);
-
-  std::string footprint_topic;
-  private_nh_.param("footprint_topic", footprint_topic, std::string("footprint_stamped"));
-
-  boost::function<void(const geometry_msgs::PolygonStamped::ConstPtr&)> footprint_cb =
-  	std::bind(&Costmap2DClient::updateFootPrint, this, std::placeholders::_1);
-  private_nh_.subscribe(footprint_topic, 1000, footprint_cb);
 }
 
 void Costmap2DClient::updateMap(const nav_msgs::OccupancyGrid::ConstPtr& msg)
 {
-	auto *mutex = costmap_->getLock();
-	std::lock_guard<decltype(*mutex)> lock(*mutex);
-
-	global_frame_ = msg->header.frame_id;
+  global_frame_ = msg->header.frame_id;
 
   unsigned int size_in_cells_x = msg->info.width;
   unsigned int size_in_cells_y = msg->info.height;
@@ -80,31 +89,37 @@ void Costmap2DClient::updateMap(const nav_msgs::OccupancyGrid::ConstPtr& msg)
   ROS_DEBUG("received new map, resizing to: %d, %d", size_in_cells_x, size_in_cells_y);
   costmap_->resizeMap(size_in_cells_x, size_in_cells_y, resolution, origin_x, origin_y);
 
+  // lock as we are accessing raw underlying map
+  auto *mutex = costmap_->getLock();
+  std::lock_guard<decltype(*mutex)> lock(*mutex);
+
   // fill map with data
   unsigned char* costmap_data = costmap_->getCharMap();
   size_t costmap_size = costmap_->getSizeInCellsX() * costmap_->getSizeInCellsY();
+  ROS_DEBUG("full map update, %lu values", costmap_size);
   for (size_t i = 0; i < costmap_size && i < msg->data.size(); ++i)
   {
-  	unsigned char cell = static_cast<unsigned char>(msg->data[i]);
+    unsigned char cell = static_cast<unsigned char>(msg->data[i]);
     costmap_data[i] = cost_translation_table__[cell];
   }
+  ROS_DEBUG("map updated, written %lu values", costmap_size);
 }
 
 void Costmap2DClient::updateFootPrint(const geometry_msgs::PolygonStamped::ConstPtr& msg) {
-	// TODO footprint locking
+  // TODO footprint locking
 
-	// explicit copy from Point32 to Point
-	footprint_.resize(msg->polygon.points.size());
-	auto it = footprint_.begin();
-	for(auto& point : msg->polygon.points) {
-		it->x = point.x;
-		it->y = point.y;
-		it->z = point.z;
-		++it;
-	}
+  // explicit copy from Point32 to Point
+  footprint_.resize(msg->polygon.points.size());
+  auto it = footprint_.begin();
+  for(auto& point : msg->polygon.points) {
+    it->x = point.x;
+    it->y = point.y;
+    it->z = point.z;
+    ++it;
+  }
 
-	// calculate radiuses
-	costmap_2d::calculateMinAndMaxDistances(footprint_, inscribed_radius_, circumscribed_radius_);
+  // calculate radiuses
+  costmap_2d::calculateMinAndMaxDistances(footprint_, inscribed_radius_, circumscribed_radius_);
 }
 
 bool Costmap2DClient::getRobotPose(tf::Stamped<tf::Pose>& global_pose) const
@@ -149,15 +164,15 @@ bool Costmap2DClient::getRobotPose(tf::Stamped<tf::Pose>& global_pose) const
 }
 
 std::array<unsigned char, 256> init_translation_table() {
-	std::array<unsigned char, 256> cost_translation_table;
+  std::array<unsigned char, 256> cost_translation_table;
 
-	// lineary mapped from [0..100] to [0..255]
-	for(size_t i = 0; i < 256; ++i) {
-		cost_translation_table[i] = static_cast<unsigned char>(1 + (251 * (i - 1)) / 97);
-	}
+  // lineary mapped from [0..100] to [0..255]
+  for(size_t i = 0; i < 256; ++i) {
+    cost_translation_table[i] = static_cast<unsigned char>(1 + (251 * (i - 1)) / 97);
+  }
 
-	// special values:
-	cost_translation_table[0] = 0;  // NO obstacle
+  // special values:
+  cost_translation_table[0] = 0;  // NO obstacle
   cost_translation_table[99] = 253;  // INSCRIBED obstacle
   cost_translation_table[100] = 254;  // LETHAL obstacle
   cost_translation_table[static_cast<unsigned char>(-1)] = 255;  // UNKNOWN
