@@ -41,12 +41,11 @@
 #include <nav_msgs/OccupancyGrid.h>
 #include <geometry_msgs/Pose.h>
 #include <visualization_msgs/Marker.h>
-
 #include <tf/LinearMath/Vector3.h>
-
-#include <costmap_2d/costmap_2d_ros.h>
 #include <navfn/navfn_ros.h>
 #include <tf/transform_listener.h>
+
+#include <explore/costmap_client.h>
 
 namespace explore {
 
@@ -90,7 +89,7 @@ protected:
    * @brief Finds frontiers and populates frontiers_
    * @param costmap The costmap to search for frontiers
    */
-  virtual void findFrontiers(costmap_2d::Costmap2DROS& costmap);
+  virtual void findFrontiers(Costmap2DClient& costmap);
 
   /**
    * @brief Calculates cost to explore frontier
@@ -121,7 +120,7 @@ public:
    * @param frontiers Will be filled with current frontiers
    * @return True if at least one frontier was found
    */
-  virtual bool getFrontiers(costmap_2d::Costmap2DROS& costmap, std::vector<geometry_msgs::Pose>& frontiers);
+  virtual bool getFrontiers(Costmap2DClient& costmap, std::vector<geometry_msgs::Pose>& frontiers);
 
   /**
    * @brief Returns a list of frontiers, sorted by the planners estimated cost to visit each frontier
@@ -142,7 +141,7 @@ public:
    * improves the robustness of goals which may lie near other obstacles
    * which would prevent planning.
    */
-  virtual bool getExplorationGoals(costmap_2d::Costmap2DROS& costmap, tf::Stamped<tf::Pose> start, navfn::NavfnROS* planner, std::vector<geometry_msgs::Pose>& goals, double cost_scale, double orientation_scale, double gain_scale);
+  virtual bool getExplorationGoals(Costmap2DClient& costmap, tf::Stamped<tf::Pose> start, navfn::NavfnROS* planner, std::vector<geometry_msgs::Pose>& goals, double cost_scale, double orientation_scale, double gain_scale);
 
   /**
    * @brief  Returns markers representing all frontiers

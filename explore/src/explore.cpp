@@ -85,11 +85,11 @@ Explore::Explore() :
   private_nh.param("orientation_scale", orientation_scale_, 0.0); // TODO: set this back to 0.318 once getOrientationChange is fixed
   private_nh.param("gain_scale", gain_scale_, 1.0);
 
-  explore_costmap_ros_ = new Costmap2DROS(std::string("explore_costmap"), tf_);
+  explore_costmap_ros_ = new Costmap2DClient(private_nh, tf_);
   // TODO is this necessary?
   // explore_costmap_ros_->clearRobotFootprint();
 
-  planner_ = new navfn::NavfnROS(std::string("explore_planner"), explore_costmap_ros_);
+  planner_ = new navfn::NavfnROS();
   explorer_ = new ExploreFrontier();
   loop_closure_ = new LoopClosure(loop_closure_addition_dist_min,
         loop_closure_loop_dist_min,
@@ -211,9 +211,14 @@ void Explore::makePlan() {
   std::vector<geometry_msgs::Pose> goals;
   // TODO is this necessary?
   // explore_costmap_ros_->clearRobotFootprint();
+
   explorer_->getExplorationGoals(*explore_costmap_ros_, robot_pose, planner_, goals, potential_scale_, orientation_scale_, gain_scale_);
-  if (goals.size() == 0)
+  if (goals.size() == 0) {
     done_exploring_ = true;
+    ROS_DEBUG("no explorations goals found");
+  } else {
+    ROS_DEBUG("found %d explorations goals", goals.size());
+  }
 
   bool valid_plan = false;
   std::vector<geometry_msgs::PoseStamped> plan;
@@ -233,7 +238,10 @@ void Explore::makePlan() {
 
     valid_plan = ((planner_->getPlanFromPotential(goal_pose, plan)) && (!plan.empty()));
     if (valid_plan) {
+      ROS_DEBUG("got valid plan");
       break;
+    } else {
+      ROS_DEBUG("got invalid plan");
     }
   }
 

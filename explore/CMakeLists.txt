@@ -53,8 +53,9 @@ include_directories(
 )
 
 add_library(explore_lib
-	src/explore_frontier.cpp
-	src/loop_closure.cpp)
+  src/explore_frontier.cpp
+  src/loop_closure.cpp
+  src/costmap_client.cpp)
 set_target_properties(explore_lib
                       PROPERTIES OUTPUT_NAME "explore")
 

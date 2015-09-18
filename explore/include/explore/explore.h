@@ -36,21 +36,23 @@
 #ifndef NAV_EXPLORE_H_
 #define NAV_EXPLORE_H_
 
+#include <vector>
+#include <string>
+
+#include <boost/thread/mutex.hpp>
+
 #include <ros/ros.h>
 #include <move_base_msgs/MoveBaseAction.h>
 #include <actionlib/client/simple_action_client.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/GetMap.h>
-#include <costmap_2d/costmap_2d_ros.h>
 #include <costmap_2d/costmap_2d.h>
 #include <navfn/navfn_ros.h>
+#include <visualization_msgs/MarkerArray.h>
+
 #include <explore/explore_frontier.h>
 #include <explore/loop_closure.h>
-#include <visualization_msgs/MarkerArray.h>
-#include <vector>
-#include <string>
-#include <boost/thread/mutex.hpp>
-
+#include <explore/costmap_client.h>
 
 namespace explore {
 
@@ -112,7 +114,7 @@ private:
 
   ros::NodeHandle node_;
   tf::TransformListener tf_;
-  costmap_2d::Costmap2DROS* explore_costmap_ros_;
+  Costmap2DClient* explore_costmap_ros_;
 
   actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> move_base_client_;
 

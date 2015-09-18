@@ -60,7 +60,7 @@ ExploreFrontier::~ExploreFrontier()
 
 }
 
-bool ExploreFrontier::getFrontiers(Costmap2DROS& costmap, std::vector<geometry_msgs::Pose>& frontiers)
+bool ExploreFrontier::getFrontiers(Costmap2DClient& costmap, std::vector<geometry_msgs::Pose>& frontiers)
 {
   findFrontiers(costmap);
   if (frontiers_.size() == 0)
@@ -98,15 +98,16 @@ float ExploreFrontier::getFrontierGain(const Frontier& frontier, double map_reso
   return frontier.size * map_resolution;
 }
 
-bool ExploreFrontier::getExplorationGoals(Costmap2DROS& costmap, tf::Stamped<tf::Pose> robot_pose, navfn::NavfnROS* planner, std::vector<geometry_msgs::Pose>& goals, double potential_scale, double orientation_scale, double gain_scale)
+bool ExploreFrontier::getExplorationGoals(Costmap2DClient& costmap, tf::Stamped<tf::Pose> robot_pose, navfn::NavfnROS* planner, std::vector<geometry_msgs::Pose>& goals, double potential_scale, double orientation_scale, double gain_scale)
 {
   Costmap2D *costmap2d = costmap.getCostmap();
-  LayeredCostmap *layered_costmap = costmap.getLayeredCostmap();
 
   findFrontiers(costmap);
 
-  if (frontiers_.size() == 0)
+  if (frontiers_.size() == 0) {
+    ROS_DEBUG("no frontiers found");
     return false;
+  }
 
   geometry_msgs::Point start;
   start.x = robot_pose.getOrigin().x();
@@ -121,7 +122,7 @@ bool ExploreFrontier::getExplorationGoals(Costmap2DROS& costmap, tf::Stamped<tf:
   //we'll make sure that we set goals for the frontier at least the circumscribed
   //radius away from unknown space
   float step = -1.0 * costmapResolution_;
-  int c = ceil(layered_costmap->getCircumscribedRadius() / costmapResolution_);
+  int c = ceil(costmap.getCircumscribedRadius() / costmapResolution_);
   WeightedFrontier goal;
   std::vector<WeightedFrontier> weightedFrontiers;
   weightedFrontiers.reserve(frontiers_.size() * c);
@@ -164,11 +165,10 @@ bool ExploreFrontier::getExplorationGoals(Costmap2DROS& costmap, tf::Stamped<tf:
   return (goals.size() > 0);
 }
 
-void ExploreFrontier::findFrontiers(Costmap2DROS& costmap_) {
+void ExploreFrontier::findFrontiers(Costmap2DClient& costmap_) {
   frontiers_.clear();
 
   Costmap2D *costmap = costmap_.getCostmap();
-  LayeredCostmap* layered_costmap = costmap_.getLayeredCostmap();
 
   int idx;
   int w = costmap->getSizeInCellsX();
@@ -184,6 +184,7 @@ void ExploreFrontier::findFrontiers(Costmap2DROS& costmap_) {
 
   // Find all frontiers (open cells next to unknown cells).
   const unsigned char* map = costmap->getCharMap();
+  ROS_DEBUG_COND(!map, "no map available");
   for (idx = 0; idx < size; idx++) {
 //    //get the world point for the index
 //    unsigned int mx, my;
@@ -194,6 +195,7 @@ void ExploreFrontier::findFrontiers(Costmap2DROS& costmap_) {
     //check if the point has valid potential and is next to unknown space
 //    bool valid_point = planner_->validPointPotential(p);
     bool valid_point = (map[idx] < LETHAL_OBSTACLE);
+    // ROS_DEBUG_COND(!valid_point, "invalid point %u", map[idx]);
 
     if ((valid_point && map) &&
         (((idx+1 < size) && (map[idx+1] == NO_INFORMATION)) ||
@@ -201,6 +203,7 @@ void ExploreFrontier::findFrontiers(Costmap2DROS& costmap_) {
          ((idx+w < size) && (map[idx+w] == NO_INFORMATION)) ||
          ((idx-w >= 0) && (map[idx-w] == NO_INFORMATION))))
     {
+      ROS_DEBUG("found suitable point");
       map_.data[idx] = -128;
     } else {
       map_.data[idx] = -127;
@@ -210,6 +213,7 @@ void ExploreFrontier::findFrontiers(Costmap2DROS& costmap_) {
   // Clean up frontiers detected on separate rows of the map
   idx = map_.info.height - 1;
   for (unsigned int y=0; y < map_.info.width; y++) {
+    ROS_DEBUG("cleaning cell %d", idx);
     map_.data[idx] = -127;
     idx += map_.info.height;
   }
@@ -219,6 +223,7 @@ void ExploreFrontier::findFrontiers(Costmap2DROS& costmap_) {
   std::vector< std::vector<FrontierPoint> > segments;
   for (int i = 0; i < size; i++) {
     if (map_.data[i] == -128) {
+      ROS_DEBUG("adjoining on %d", i);
       std::vector<int> neighbors;
       std::vector<FrontierPoint> segment;
       neighbors.push_back(i);
@@ -277,8 +282,10 @@ void ExploreFrontier::findFrontiers(Costmap2DROS& costmap_) {
   }
 
   int num_segments = 127 - segment_id;
-  if (num_segments <= 0)
+  if (num_segments <= 0) {
+    ROS_DEBUG("#segments is <0, no frontiers found");
     return;
+  }
 
   for (unsigned int i=0; i < segments.size(); i++) {
     Frontier frontier;
@@ -286,8 +293,10 @@ void ExploreFrontier::findFrontiers(Costmap2DROS& costmap_) {
     uint size = segment.size();
 
     //we want to make sure that the frontier is big enough for the robot to fit through
-    if (size * costmap->getResolution() < layered_costmap->getInscribedRadius())
+    if (size * costmap->getResolution() < costmap_.getInscribedRadius()) {
+      ROS_DEBUG("frontier is small");
       continue;
+    }
 
     float x = 0, y = 0;
     tf::Vector3 d(0,0,0);

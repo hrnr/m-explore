@@ -55,7 +55,7 @@ LoopClosure::LoopClosure(double addition_dist_min,
                          double slam_entropy_max_,
                          double graph_update_frequency, 
                          actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>& move_base_client,
-                         costmap_2d::Costmap2DROS& costmap,
+                         Costmap2DClient& costmap,
                          boost::mutex& control_mutex) :
         curr_node_(NULL), 
         addition_dist_min_(addition_dist_min), 
@@ -74,7 +74,7 @@ LoopClosure::LoopClosure(double addition_dist_min,
 {
   marker_publisher_ = nh_.advertise<visualization_msgs::MarkerArray>("visualization_marker_array",1);
   entropy_subscriber_ = nh_.subscribe("slam_entropy", 1, &LoopClosure::entropyCallback, this);
-  planner_ = new navfn::NavfnROS(std::string("loop_closure_planner"), &costmap_);
+  planner_ = new navfn::NavfnROS();
 }
 
 LoopClosure::~LoopClosure()

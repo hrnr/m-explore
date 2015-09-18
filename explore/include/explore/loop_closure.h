@@ -43,19 +43,18 @@
  * al., IROS 2004.
  */
 
-#include <tf/transform_datatypes.h>
-#include <actionlib/client/simple_action_client.h>
-#include <move_base_msgs/MoveBaseAction.h>
-#include <costmap_2d/costmap_2d_ros.h>
-#include <std_msgs/Float64.h>
-#include <navfn/navfn_ros.h>
-
-#include <ros/node_handle.h>
-
 #include <boost/thread/mutex.hpp>
 #include <boost/function.hpp>
 
+#include <tf/transform_datatypes.h>
+#include <actionlib/client/simple_action_client.h>
+#include <move_base_msgs/MoveBaseAction.h>
+#include <std_msgs/Float64.h>
+#include <navfn/navfn_ros.h>
+#include <ros/node_handle.h>
 #include <visualization_msgs/MarkerArray.h>
+
+#include <explore/costmap_client.h>
 
 namespace explore
 {
@@ -90,7 +89,7 @@ class LoopClosure
                 double slam_entropy_max_,
                 double graph_update_frequency,
                 actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>& move_base_client,
-                costmap_2d::Costmap2DROS& costmap,
+                Costmap2DClient& costmap,
                 boost::mutex& control_mutex);
     ~LoopClosure();
 
@@ -222,7 +221,7 @@ class LoopClosure
     ros::Subscriber entropy_subscriber_;
     ros::Publisher marker_publisher_;
     int marker_id_;
-    costmap_2d::Costmap2DROS& costmap_;
+    Costmap2DClient& costmap_;
     // Mutex to lock when commanding the robot
     boost::mutex& control_mutex_;
     navfn::NavfnROS* planner_;
