@@ -12,14 +12,14 @@ namespace explore {
 std::array<unsigned char, 256> init_translation_table();
 static const std::array<unsigned char, 256> cost_translation_table__ = init_translation_table();
 
-Costmap2DClient::Costmap2DClient(ros::NodeHandle nh, tf::TransformListener& tf) :
+Costmap2DClient::Costmap2DClient(ros::NodeHandle& param_nh, ros::NodeHandle& subscription_nh,
+  tf::TransformListener& tf) :
     costmap_(new costmap_2d::Costmap2D()),
-    tf_(tf),
-    private_nh_(nh)
+    tf_(tf)
 {
   /* initialize costmap */
   std::string costmap_topic;
-  private_nh_.param("costmap_topic", costmap_topic, std::string("costmap"));
+  param_nh.param("costmap_topic", costmap_topic, std::string("costmap"));
 
   boost::function<void(const nav_msgs::OccupancyGrid::ConstPtr&)> costmap_cb =
     std::bind(&Costmap2DClient::updateFullMap, this, std::placeholders::_1);
@@ -31,7 +31,7 @@ Costmap2DClient::Costmap2DClient(ros::NodeHandle nh, tf::TransformListener& tf) 
 
   /* initialize footprint */
   std::string footprint_topic;
-  private_nh_.param("footprint_topic", footprint_topic, std::string("footprint_stamped"));
+  param_nh.param("footprint_topic", footprint_topic, std::string("footprint_stamped"));
 
   boost::function<void(const geometry_msgs::PolygonStamped::ConstPtr&)> footprint_cb =
     std::bind(&Costmap2DClient::updateFootPrint, this, std::placeholders::_1);
@@ -51,14 +51,14 @@ Costmap2DClient::Costmap2DClient(ros::NodeHandle nh, tf::TransformListener& tf) 
   costmap_updates_sub_ = subscription_nh.subscribe(costmap_updates_topic, 1000, costmap_updates_cb);
 
   /* tf transform necessary for getRobotPose */
-  std::string tf_prefix = tf::getPrefixParam(private_nh_);
+  std::string tf_prefix = tf::getPrefixParam(param_nh);
 
   // get two frames
-  private_nh_.param("global_frame", global_frame_, std::string("map"));
-  private_nh_.param("robot_base_frame", robot_base_frame_, std::string("base_link"));
+  param_nh.param("global_frame", global_frame_, std::string("map"));
+  param_nh.param("robot_base_frame", robot_base_frame_, std::string("base_link"));
 
   // transform tolerance is used for all tf transforms here
-  private_nh_.param("transform_tolerance", transform_tolerance_, 0.3);
+  param_nh.param("transform_tolerance", transform_tolerance_, 0.3);
 
   // make sure that we set the frames appropriately based on the tf_prefix
   global_frame_ = tf::resolve(tf_prefix, global_frame_);

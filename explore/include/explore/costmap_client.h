@@ -13,7 +13,8 @@ namespace explore {
 
 class Costmap2DClient {
 public:
-	Costmap2DClient(ros::NodeHandle nh, tf::TransformListener& tf);
+	Costmap2DClient(ros::NodeHandle& param_nh, ros::NodeHandle& subscription_nh,
+    tf::TransformListener& tf);
 	/**
    * @brief Get the pose of the robot in the global frame of the costmap
    * @param global_pose Will be set to the pose of the robot in the global frame of the costmap
@@ -29,11 +30,19 @@ public:
       return costmap_.get();
     }
 
+  /** @brief Return a pointer to the "master" costmap which receives updates from all the layers.
+   *
+   * Same as calling getLayeredCostmap()->getCostmap(). */
+  const costmap_2d::Costmap2D* getCostmap() const
+    {
+      return costmap_.get();
+    }
+
   /**
    * @brief  Returns the global frame of the costmap
    * @return The global frame of the costmap
    */
-  std::string getGlobalFrameID()
+  std::string getGlobalFrameID() const
     {
       return global_frame_;
     }
@@ -42,14 +51,14 @@ public:
    * @brief  Returns the local frame of the costmap
    * @return The local frame of the costmap
    */
-  std::string getBaseFrameID()
+  std::string getBaseFrameID() const
     {
       return robot_base_frame_;
     }
 
   const std::vector<geometry_msgs::Point> getFootprint() const { return footprint_; }
-  double getCircumscribedRadius() { return circumscribed_radius_; }
-  double getInscribedRadius() { return inscribed_radius_; }
+  double getCircumscribedRadius() const { return circumscribed_radius_; }
+  double getInscribedRadius() const { return inscribed_radius_; }
 
 protected:
   void updateFullMap(const nav_msgs::OccupancyGrid::ConstPtr& msg);
