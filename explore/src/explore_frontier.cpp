@@ -181,6 +181,10 @@ void ExploreFrontier::findFrontiers(Costmap2DClient& costmap_) {
   map_.info.origin.position.x = costmap->getOriginX();
   map_.info.origin.position.y = costmap->getOriginY();
 
+  // lock as we are accessing raw underlying map
+  auto *mutex = costmap->getLock();
+  boost::shared_lock<boost::shared_mutex> lock(*mutex);
+
   // Find all frontiers (open cells next to unknown cells).
   const unsigned char* map = costmap->getCharMap();
   ROS_DEBUG_COND(!map, "no map available");
@@ -202,7 +206,7 @@ void ExploreFrontier::findFrontiers(Costmap2DClient& costmap_) {
          ((idx+w < size) && (map[idx+w] == NO_INFORMATION)) ||
          ((idx-w >= 0) && (map[idx-w] == NO_INFORMATION))))
     {
-      ROS_DEBUG("found suitable point");
+      ROS_DEBUG_THROTTLE(30, "found suitable point");
       map_.data[idx] = -128;
     } else {
       map_.data[idx] = -127;
@@ -212,7 +216,7 @@ void ExploreFrontier::findFrontiers(Costmap2DClient& costmap_) {
   // Clean up frontiers detected on separate rows of the map
   idx = map_.info.height - 1;
   for (unsigned int y=0; y < map_.info.width; y++) {
-    ROS_DEBUG("cleaning cell %d", idx);
+    ROS_DEBUG_THROTTLE(30, "cleaning cell %d", idx);
     map_.data[idx] = -127;
     idx += map_.info.height;
   }
@@ -222,36 +226,43 @@ void ExploreFrontier::findFrontiers(Costmap2DClient& costmap_) {
   std::vector< std::vector<FrontierPoint> > segments;
   for (int i = 0; i < size; i++) {
     if (map_.data[i] == -128) {
-      ROS_DEBUG("adjoining on %d", i);
+      ROS_DEBUG_THROTTLE(30, "adjoining on %d", i);
       std::vector<int> neighbors;
       std::vector<FrontierPoint> segment;
       neighbors.push_back(i);
 
       // claim all neighbors
       while (neighbors.size() > 0) {
+        ROS_DEBUG_THROTTLE(30, "got %lu neighbors", neighbors.size());
         int idx = neighbors.back();
         neighbors.pop_back();
         map_.data[idx] = segment_id;
 
         tf::Vector3 tot(0,0,0);
-        int c = 0;
+        size_t c = 0;
         if ((idx+1 < size) && (map[idx+1] == NO_INFORMATION)) {
           tot += tf::Vector3(1,0,0);
-          c++;
+          ++c;
         }
         if ((idx-1 >= 0) && (map[idx-1] == NO_INFORMATION)) {
           tot += tf::Vector3(-1,0,0);
-          c++;
+          ++c;
         }
         if ((idx+w < size) && (map[idx+w] == NO_INFORMATION)) {
           tot += tf::Vector3(0,1,0);
-          c++;
+          ++c;
         }
         if ((idx-w >= 0) && (map[idx-w] == NO_INFORMATION)) {
           tot += tf::Vector3(0,-1,0);
-          c++;
+          ++c;
         }
-        assert(c > 0);
+
+        if(!(c > 0)) {
+          ROS_ERROR("assertion failed. corrupted costmap?");
+          ROS_DEBUG("c is %lu", c);
+          continue;
+        }
+
         segment.push_back(FrontierPoint(idx, tot / c));
 
         // consider 8 neighborhood
@@ -280,6 +291,9 @@ void ExploreFrontier::findFrontiers(Costmap2DClient& costmap_) {
     }
   }
 
+  // no longer accessing map
+  lock.unlock();
+
   int num_segments = 127 - segment_id;
   if (num_segments <= 0) {
     ROS_DEBUG("#segments is <0, no frontiers found");
@@ -293,7 +307,7 @@ void ExploreFrontier::findFrontiers(Costmap2DClient& costmap_) {
 
     //we want to make sure that the frontier is big enough for the robot to fit through
     if (size * costmap->getResolution() < costmap_.getInscribedRadius()) {
-      ROS_DEBUG("frontier is small");
+      ROS_DEBUG_THROTTLE(30, "some frontiers were small");
       continue;
     }
 
