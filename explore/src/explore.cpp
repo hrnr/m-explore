@@ -85,8 +85,9 @@ Explore::Explore() :
   // TODO is this necessary?
   // explore_costmap_ros_->clearRobotFootprint();
 
-  planner_ = new navfn::NavfnROS();
-  explorer_ = new ExploreFrontier();
+  planner_ = new navfn::NavfnROS("explore_planner",
+    explore_costmap_ros_->getCostmap(), explore_costmap_ros_->getGlobalFrameID());
+  explorer_ = new ExploreFrontier(explore_costmap_ros_);
   loop_closure_ = new LoopClosure(loop_closure_addition_dist_min,
         loop_closure_loop_dist_min,
         loop_closure_loop_dist_max,

@@ -74,7 +74,8 @@ LoopClosure::LoopClosure(double addition_dist_min,
 {
   marker_publisher_ = nh_.advertise<visualization_msgs::MarkerArray>("visualization_marker_array",1);
   entropy_subscriber_ = nh_.subscribe("slam_entropy", 1, &LoopClosure::entropyCallback, this);
-  planner_ = new navfn::NavfnROS();
+  planner_ = new navfn::NavfnROS("loop_closure_planner",
+    costmap_.getCostmap(), costmap_.getGlobalFrameID());
 }
 
 LoopClosure::~LoopClosure()
