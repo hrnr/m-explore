@@ -81,7 +81,7 @@ Explore::Explore() :
   private_nh.param("orientation_scale", orientation_scale_, 0.0); // TODO: set this back to 0.318 once getOrientationChange is fixed
   private_nh.param("gain_scale", gain_scale_, 1.0);
 
-  explore_costmap_ros_ = new Costmap2DClient(private_nh, tf_);
+  explore_costmap_ros_ = new Costmap2DClient(private_nh, relative_nh, tf_);
   // TODO is this necessary?
   // explore_costmap_ros_->clearRobotFootprint();
 
