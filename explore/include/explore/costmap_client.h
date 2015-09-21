@@ -4,6 +4,7 @@
 #include <ros/ros.h>
 #include <costmap_2d/costmap_2d.h>
 #include <nav_msgs/OccupancyGrid.h>
+#include <map_msgs/OccupancyGridUpdate.h>
 #include <geometry_msgs/PolygonStamped.h>
 #include <tf/tf.h>
 #include <tf/transform_listener.h>
@@ -51,7 +52,8 @@ public:
   double getInscribedRadius() { return inscribed_radius_; }
 
 protected:
-  void updateMap(const nav_msgs::OccupancyGrid::ConstPtr& msg);
+  void updateFullMap(const nav_msgs::OccupancyGrid::ConstPtr& msg);
+  void updatePartialMap(const map_msgs::OccupancyGridUpdate::ConstPtr& msg);
   void updateFootPrint(const geometry_msgs::PolygonStamped::ConstPtr& msg);
 
   typedef std::unique_ptr<costmap_2d::Costmap2D> costmap_ptr;
@@ -61,10 +63,14 @@ protected:
   std::string global_frame_;  ///< @brief The global frame for the costmap
   std::string robot_base_frame_;  ///< @brief The frame_id of the robot base
   double transform_tolerance_;  ///< timeout before transform errors
-  ros::NodeHandle private_nh_;
 
   std::vector<geometry_msgs::Point> footprint_;
   double circumscribed_radius_, inscribed_radius_;
+private:
+  // will be unsubscribed at destruction
+  ros::Subscriber costmap_sub_;
+  ros::Subscriber costmap_updates_sub_;
+  ros::Subscriber footprint_sub_;
 };
 
 } // namespace explore

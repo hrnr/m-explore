@@ -22,12 +22,12 @@ Costmap2DClient::Costmap2DClient(ros::NodeHandle nh, tf::TransformListener& tf) 
   private_nh_.param("costmap_topic", costmap_topic, std::string("costmap"));
 
   boost::function<void(const nav_msgs::OccupancyGrid::ConstPtr&)> costmap_cb =
-    std::bind(&Costmap2DClient::updateMap, this, std::placeholders::_1);
-  private_nh_.subscribe(costmap_topic, 1000, costmap_cb);
+    std::bind(&Costmap2DClient::updateFullMap, this, std::placeholders::_1);
+  costmap_sub_ = subscription_nh.subscribe(costmap_topic, 1000, costmap_cb);
   ROS_INFO("Waiting for costmap to become available, topic: %s",
       costmap_topic.c_str());
-  auto costmap_msg = ros::topic::waitForMessage<nav_msgs::OccupancyGrid>(costmap_topic, private_nh_);
-  updateMap(costmap_msg);
+  auto costmap_msg = ros::topic::waitForMessage<nav_msgs::OccupancyGrid>(costmap_topic, subscription_nh);
+  updateFullMap(costmap_msg);
 
   /* initialize footprint */
   std::string footprint_topic;
@@ -35,11 +35,20 @@ Costmap2DClient::Costmap2DClient(ros::NodeHandle nh, tf::TransformListener& tf) 
 
   boost::function<void(const geometry_msgs::PolygonStamped::ConstPtr&)> footprint_cb =
     std::bind(&Costmap2DClient::updateFootPrint, this, std::placeholders::_1);
-  private_nh_.subscribe(footprint_topic, 1000, footprint_cb);
+  // TODO static footprint options
+  footprint_sub_ = subscription_nh.subscribe(footprint_topic, 1000, footprint_cb);
   ROS_INFO("Waiting for footprint to become available, topic: %s",
       footprint_topic.c_str());
-  auto footprint_msg = ros::topic::waitForMessage<geometry_msgs::PolygonStamped>(footprint_topic, private_nh_);
+  auto footprint_msg = ros::topic::waitForMessage<geometry_msgs::PolygonStamped>(footprint_topic, subscription_nh);
   updateFootPrint(footprint_msg);
+
+  /* subscribe to map updates */
+  std::string costmap_updates_topic;
+  param_nh.param("costmap_updates_topic", costmap_updates_topic, std::string("costmap_updates"));
+
+  boost::function<void(const map_msgs::OccupancyGridUpdate::ConstPtr&)> costmap_updates_cb =
+    std::bind(&Costmap2DClient::updatePartialMap, this, std::placeholders::_1);
+  costmap_updates_sub_ = subscription_nh.subscribe(costmap_updates_topic, 1000, costmap_updates_cb);
 
   /* tf transform necessary for getRobotPose */
   std::string tf_prefix = tf::getPrefixParam(private_nh_);
@@ -76,7 +85,7 @@ Costmap2DClient::Costmap2DClient(ros::NodeHandle nh, tf::TransformListener& tf) 
   }
 }
 
-void Costmap2DClient::updateMap(const nav_msgs::OccupancyGrid::ConstPtr& msg)
+void Costmap2DClient::updateFullMap(const nav_msgs::OccupancyGrid::ConstPtr& msg)
 {
   global_frame_ = msg->header.frame_id;
 
@@ -86,7 +95,7 @@ void Costmap2DClient::updateMap(const nav_msgs::OccupancyGrid::ConstPtr& msg)
   double origin_x = msg->info.origin.position.x;
   double origin_y = msg->info.origin.position.y;
 
-  ROS_DEBUG("received new map, resizing to: %d, %d", size_in_cells_x, size_in_cells_y);
+  ROS_DEBUG("received full new map, resizing to: %d, %d", size_in_cells_x, size_in_cells_y);
   costmap_->resizeMap(size_in_cells_x, size_in_cells_y, resolution, origin_x, origin_y);
 
   // lock as we are accessing raw underlying map
@@ -99,10 +108,58 @@ void Costmap2DClient::updateMap(const nav_msgs::OccupancyGrid::ConstPtr& msg)
   ROS_DEBUG("full map update, %lu values", costmap_size);
   for (size_t i = 0; i < costmap_size && i < msg->data.size(); ++i)
   {
-    unsigned char cell = static_cast<unsigned char>(msg->data[i]);
-    costmap_data[i] = cost_translation_table__[cell];
+    unsigned char cell_cost = static_cast<unsigned char>(msg->data[i]);
+    costmap_data[i] = cost_translation_table__[cell_cost];
   }
   ROS_DEBUG("map updated, written %lu values", costmap_size);
+}
+
+void Costmap2DClient::updatePartialMap(const map_msgs::OccupancyGridUpdate::ConstPtr& msg)
+{
+  ROS_DEBUG("received partial map update");
+  global_frame_ = msg->header.frame_id;
+
+  if (msg->x < 0 || msg->y < 0)
+  {
+    ROS_ERROR("negative coordinates, invalid update. x: %d, y: %d", msg->x, msg->y);
+    return;
+  }
+
+  size_t x0 = static_cast<size_t>(msg->x);
+  size_t y0 = static_cast<size_t>(msg->y);
+  size_t xn = msg->width + x0;
+  size_t yn = msg->height + y0;
+
+  // lock as we are accessing raw underlying map
+  auto *mutex = costmap_->getLock();
+  std::lock_guard<decltype(*mutex)> lock(*mutex);
+
+  size_t costmap_xn = costmap_->getSizeInCellsX();
+  size_t costmap_yn = costmap_->getSizeInCellsY();
+
+  if (xn > costmap_xn ||
+      x0 > costmap_xn ||
+      yn > costmap_yn ||
+      y0 > costmap_yn)
+  {
+    ROS_WARN("received update doesn't fully fit into existing map, "
+      "only part will be copied. received: [%lu, %lu], [%lu, %lu] "
+      "map is: [0, %lu], [0, %lu]", x0, xn, y0, yn, costmap_xn, costmap_yn);
+  }
+
+  // update map with data
+  unsigned char* costmap_data = costmap_->getCharMap();
+  size_t i = 0;
+  for (size_t y = y0; y < yn && y < costmap_yn; ++y)
+  {
+    for (size_t x = x0; x < xn && x < costmap_xn; ++x)
+    {
+      size_t idx = costmap_->getIndex(x, y);
+      unsigned char cell_cost = static_cast<unsigned char>(msg->data[i]);
+      costmap_data[idx] = cost_translation_table__[cell_cost];
+      ++i;
+    }
+  }
 }
 
 void Costmap2DClient::updateFootPrint(const geometry_msgs::PolygonStamped::ConstPtr& msg) {
