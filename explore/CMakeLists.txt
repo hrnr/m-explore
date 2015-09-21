@@ -8,6 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
   move_base_msgs
   visualization_msgs
   geometry_msgs
+  map_msgs
   nav_msgs
   actionlib_msgs
   tf

@@ -42,7 +42,6 @@
 
 using namespace costmap_2d;
 using namespace navfn;
-using namespace visualization_msgs;
 using namespace geometry_msgs;
 
 namespace explore {
@@ -62,16 +61,13 @@ Explore::Explore() :
   prev_plan_size_(0)
 {
   ros::NodeHandle private_nh("~");
+  ros::NodeHandle relative_nh;
 
-  marker_publisher_ = node_.advertise<Marker>("visualization_marker",10);
-  marker_array_publisher_ = node_.advertise<MarkerArray>("visualization_marker_array",10);
-  map_publisher_ = private_nh.advertise<nav_msgs::OccupancyGrid>("map", 1, true);
-  map_server_ = private_nh.advertiseService("explore_map", &Explore::mapCallback, this);
+  marker_array_publisher_ = private_nh.advertise<visualization_msgs::MarkerArray>("frontiers", 10);
 
-  private_nh.param("navfn/robot_base_frame", robot_base_frame_, std::string("base_link"));
   private_nh.param("planner_frequency", planner_frequency_, 1.0);
   private_nh.param("progress_timeout", progress_timeout_, 30.0);
-  private_nh.param("visualize", visualize_, 1);
+  private_nh.param("visualize", visualize_, false);
   double loop_closure_addition_dist_min;
   double loop_closure_loop_dist_min;
   double loop_closure_loop_dist_max;
@@ -115,89 +111,11 @@ Explore::~Explore() {
     delete explore_costmap_ros_;
 }
 
-bool Explore::mapCallback(nav_msgs::GetMap::Request  &req,
-                          nav_msgs::GetMap::Response &res)
-{
-  ROS_DEBUG("mapCallback");
-  Costmap2D *explore_costmap = explore_costmap_ros_->getCostmap();
-
-  res.map.info.width = explore_costmap->getSizeInCellsX();
-  res.map.info.height = explore_costmap->getSizeInCellsY();
-  res.map.info.resolution = explore_costmap->getResolution();
-  res.map.info.origin.position.x = explore_costmap->getOriginX();
-  res.map.info.origin.position.y = explore_costmap->getOriginY();
-  res.map.info.origin.position.z = 0;
-  res.map.info.origin.orientation.x = 0;
-  res.map.info.origin.orientation.y = 0;
-  res.map.info.origin.orientation.z = 0;
-  res.map.info.origin.orientation.w = 1;
-
-  int size = res.map.info.width * res.map.info.height;
-  const unsigned char* map = explore_costmap->getCharMap();
-
-  res.map.data.resize((size_t)size);
-  for (int i=0; i<size; i++) {
-    if (map[i] == NO_INFORMATION)
-      res.map.data[i] = -1;
-    else if (map[i] == LETHAL_OBSTACLE)
-      res.map.data[i] = 100;
-    else
-      res.map.data[i] = 0;
-  }
-
-  return true;
-}
-
-void Explore::publishMap() {
-  nav_msgs::OccupancyGrid map;
-  map.header.stamp = ros::Time::now();
-
-  Costmap2D *explore_costmap = explore_costmap_ros_->getCostmap();
-
-  map.info.width = explore_costmap->getSizeInCellsX();
-  map.info.height = explore_costmap->getSizeInCellsY();
-  map.info.resolution = explore_costmap->getResolution();
-  map.info.origin.position.x = explore_costmap->getOriginX();
-  map.info.origin.position.y = explore_costmap->getOriginY();
-  map.info.origin.position.z = 0;
-  map.info.origin.orientation.x = 0;
-  map.info.origin.orientation.y = 0;
-  map.info.origin.orientation.z = 0;
-  map.info.origin.orientation.w = 1;
-
-  int size = map.info.width * map.info.height;
-  const unsigned char* char_map = explore_costmap->getCharMap();
-
-  map.data.resize((size_t)size);
-  for (int i=0; i<size; i++) {
-    if (char_map[i] == NO_INFORMATION)
-      map.data[i] = -1;
-    else if (char_map[i] == LETHAL_OBSTACLE)
-      map.data[i] = 100;
-    else
-      map.data[i] = 0;
-  }
-
-  map_publisher_.publish(map);
-}
-
-void Explore::publishGoal(const geometry_msgs::Pose& goal){
-  visualization_msgs::Marker marker;
-  marker.header.frame_id = "map";
-  marker.header.stamp = ros::Time::now();
-  marker.ns = "explore_goal";
-  marker.id = 0;
-  marker.type = visualization_msgs::Marker::ARROW;
-  marker.pose = goal;
-  marker.scale.x = 0.5;
-  marker.scale.y = 1.0;
-  marker.scale.z = 1.0;
-  marker.color.a = 1.0;
-  marker.color.r = 0.0;
-  marker.color.g = 1.0;
-  marker.color.b = 0.0;
-  marker.lifetime = ros::Duration(5);
-  marker_publisher_.publish(marker);
+void Explore::publishFrontiers() {
+  visualization_msgs::MarkerArray markers;
+  explorer_->getVisualizationMarkers(markers);
+  ROS_DEBUG("publishing %lu markers", markers.markers.size());
+  marker_array_publisher_.publish(markers);
 }
 
 void Explore::makePlan() {
@@ -217,7 +135,12 @@ void Explore::makePlan() {
     done_exploring_ = true;
     ROS_DEBUG("no explorations goals found");
   } else {
-    ROS_DEBUG("found %d explorations goals", goals.size());
+    ROS_DEBUG("found %lu explorations goals", goals.size());
+  }
+
+  // publish frontiers as visualization markers
+  if (visualize_) {
+    publishFrontiers();
   }
 
   bool valid_plan = false;
@@ -245,14 +168,6 @@ void Explore::makePlan() {
     }
   }
 
-  // publish visualization markers
-  if (visualize_) {
-    std::vector<Marker> markers;
-    explorer_->getVisualizationMarkers(markers);
-    for (uint i=0; i < markers.size(); i++)
-      marker_publisher_.publish(markers[i]);
-  }
-
   if (valid_plan) {
     if (prev_plan_size_ != plan.size()) {
       time_since_progress_ = 0.0;
@@ -278,10 +193,6 @@ void Explore::makePlan() {
     goal.target_pose = goal_pose;
     move_base_client_.sendGoal(goal, boost::bind(&Explore::reachedGoal, this, _1, _2, goal_pose));
 
-    if (visualize_) {
-      publishGoal(goal_pose.pose);
-      publishMap();
-    }
   } else {
     ROS_WARN("Done exploring with %d goals left that could not be reached. There are %d goals on our blacklist, and %d of the frontier goals are too close to them to pursue. The rest had global planning fail to them. \n", (int)goals.size(), (int)frontier_blacklist_.size(), blacklist_count);
     ROS_INFO("Exploration finished. Hooray.");

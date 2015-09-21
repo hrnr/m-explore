@@ -41,17 +41,16 @@
 
 #include <explore/explore_frontier.h>
 
-
-using namespace visualization_msgs;
 using namespace costmap_2d;
 
 namespace explore {
 
-ExploreFrontier::ExploreFrontier() :
+ExploreFrontier::ExploreFrontier(const Costmap2DClient* costmap) :
   map_(),
-  lastMarkerCount_(0),
+  last_markers_count_(0),
   planner_(NULL),
-  frontiers_()
+  frontiers_(),
+  costmap_(costmap)
 {
 }
 
@@ -320,17 +319,16 @@ void ExploreFrontier::findFrontiers(Costmap2DClient& costmap_) {
 
 }
 
-void ExploreFrontier::getVisualizationMarkers(std::vector<Marker>& markers)
+void ExploreFrontier::getVisualizationMarkers(visualization_msgs::MarkerArray& markers_)
 {
-  Marker m;
-  m.header.frame_id = "map";
+  ROS_DEBUG("visualising %lu frontiers", frontiers_.size());
+  std::vector<visualization_msgs::Marker>& markers = markers_.markers;
+  visualization_msgs::Marker m;
+
+  m.header.frame_id = costmap_->getGlobalFrameID();
   m.header.stamp = ros::Time::now();
-  m.id = 0;
   m.ns = "frontiers";
-  m.type = Marker::ARROW;
-  m.pose.position.x = 0.0;
-  m.pose.position.y = 0.0;
-  m.pose.position.z = 0.0;
+  m.type = visualization_msgs::Marker::ARROW;
   m.scale.x = 1.0;
   m.scale.y = 1.0;
   m.scale.z = 1.0;
@@ -338,25 +336,28 @@ void ExploreFrontier::getVisualizationMarkers(std::vector<Marker>& markers)
   m.color.g = 0;
   m.color.b = 255;
   m.color.a = 255;
+  // lives forever
   m.lifetime = ros::Duration(0);
+  m.frame_locked = true;
 
-  m.action = Marker::ADD;
-  uint id = 0;
-  for (uint i=0; i<frontiers_.size(); i++) {
-    Frontier frontier = frontiers_[i];
+  m.action = visualization_msgs::Marker::ADD;
+  size_t id=0;
+  for (auto& frontier : frontiers_) {
     m.id = id;
     m.pose = frontier.pose;
-    markers.push_back(Marker(m));
-    id++;
+    markers.push_back(m);
+    ++id;
   }
+  size_t current_markers_count = markers.size();
 
-  m.action = Marker::DELETE;
-  for (; id < lastMarkerCount_; id++) {
+  // delete previous markers, which are now unused
+  m.action = visualization_msgs::Marker::DELETE;
+  for (; id < last_markers_count_; ++id) {
     m.id = id;
-    markers.push_back(Marker(m));
+    markers.push_back(m);
   }
 
-  lastMarkerCount_ = markers.size();
+  last_markers_count_ = current_markers_count;
 }
 
 }

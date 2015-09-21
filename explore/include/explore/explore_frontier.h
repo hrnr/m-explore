@@ -40,7 +40,7 @@
 #include <nav_msgs/GetMap.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <geometry_msgs/Pose.h>
-#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/MarkerArray.h>
 #include <tf/LinearMath/Vector3.h>
 #include <navfn/navfn_ros.h>
 #include <tf/transform_listener.h>
@@ -78,10 +78,11 @@ class ExploreFrontier {
 private:
   nav_msgs::OccupancyGrid map_;
 
-  uint lastMarkerCount_;
+  size_t last_markers_count_;
   float costmapResolution_;
 
   navfn::NavfnROS* planner_;
+  const Costmap2DClient* costmap_;
 protected:
   std::vector<Frontier> frontiers_;
 
@@ -111,7 +112,7 @@ protected:
   virtual float getFrontierGain(const Frontier& frontier, double map_resolution);
 
 public:
-  ExploreFrontier();
+  ExploreFrontier(const Costmap2DClient* costmap);
   virtual ~ExploreFrontier();
 
   /**
@@ -147,7 +148,7 @@ public:
    * @brief  Returns markers representing all frontiers
    * @param markers All markers will be added to this vector
    */
-  virtual void getVisualizationMarkers(std::vector<visualization_msgs::Marker>& markers);
+  virtual void getVisualizationMarkers(visualization_msgs::MarkerArray& markers);
 };
 
 }

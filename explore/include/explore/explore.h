@@ -91,24 +91,11 @@ private:
   void makePlan();
 
   /**
-   * @brief  Publish a goal to the visualizer
-   * @param  goal The goal to visualize
+   * @brief  Publish a frontiers as markers
    */
-  void publishGoal(const geometry_msgs::Pose& goal);
-
-  /**
-   * @brief publish map
-   */
-  void publishMap();
+  void publishFrontiers();
 
   void reachedGoal(const actionlib::SimpleClientGoalState& status, const move_base_msgs::MoveBaseResultConstPtr& result, geometry_msgs::PoseStamped frontier_goal);
-
-  /**
-   * @brief  Resets the costmaps to the static map outside a given window
-   */
-//  void resetCostmaps(double size_x, double size_y);
-
-  bool mapCallback(nav_msgs::GetMap::Request  &req, nav_msgs::GetMap::Response &res);
 
   bool goalOnBlacklist(const geometry_msgs::PoseStamped& goal);
 
@@ -119,7 +106,6 @@ private:
   actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> move_base_client_;
 
   navfn::NavfnROS* planner_;
-  std::string robot_base_frame_;
   bool done_exploring_;
 
   ros::Publisher marker_publisher_;
@@ -131,7 +117,7 @@ private:
 
   tf::Stamped<tf::Pose> global_pose_;
   double planner_frequency_;
-  int    visualize_;
+  bool visualize_;
   LoopClosure* loop_closure_;
   std::vector<geometry_msgs::PoseStamped> frontier_blacklist_;
   geometry_msgs::PoseStamped prev_goal_;
