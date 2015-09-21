@@ -1,0 +1,16 @@
+<launch>
+<arg name="id" default="0" />
+<arg name="tf_prefix" default="p3dx_$(arg id)" />
+<group ns="$(arg tf_prefix)">
+  <node pkg="explore" type="explore" respawn="false" name="explore" output="screen" >
+    <param name="potential_scale" value="0.005"/>
+    <param name="orientation_scale" value="0.0"/>
+    <param name="gain_scale" value="1.0"/>
+    <param name="close_loops" value="false"/>
+    <param name="costmap_topic" value="move_base/global_costmap/costmap"/>
+    <param name="costmap_updates_topic" value="move_base/global_costmap/costmap_updates"/>
+    <param name="footprint_topic" value="move_base/global_costmap/obstacle_layer_footprint/footprint_stamped"/>
+    <param name="visualize" value="true"/>
+  </node>
+</group>
+</launch>
