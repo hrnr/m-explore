@@ -50,21 +50,21 @@
 namespace explore {
 
 struct FrontierPoint{
-  int idx;     //position
+  size_t idx;     //position
   tf::Vector3 d; //direction
 
-  FrontierPoint(int idx_, tf::Vector3 d_) : idx(idx_), d(d_) {}
+  FrontierPoint(size_t idx_, tf::Vector3 d_) : idx(idx_), d(d_) {}
 };
 
 struct Frontier {
   geometry_msgs::Pose pose;
-  int size;
+  size_t size;
   Frontier():pose(),size(0) {}
 };
 
 struct WeightedFrontier {
   Frontier frontier;
-  float cost;
+  double cost;
   bool operator<(const WeightedFrontier& o) const { return cost < o.cost; }
   WeightedFrontier():frontier(),cost(1e9) {}
   WeightedFrontier(const WeightedFrontier& copy) { frontier = copy.frontier; cost = copy.cost; }
@@ -79,7 +79,6 @@ private:
   nav_msgs::OccupancyGrid map_;
 
   size_t last_markers_count_;
-  float costmapResolution_;
 
   navfn::NavfnROS* planner_;
   const Costmap2DClient* costmap_;
@@ -96,7 +95,7 @@ protected:
    * @brief Calculates cost to explore frontier
    * @param frontier to evaluate
    */
-  virtual float getFrontierCost(const Frontier& frontier);
+  virtual double getFrontierCost(const Frontier& frontier);
 
   /**
    * @brief Calculates how much the robot would have to turn to face this frontier
@@ -109,7 +108,7 @@ protected:
    * @brief Calculates potential information gain of exploring frontier
    * @param frontier to evaluate
    */
-  virtual float getFrontierGain(const Frontier& frontier, double map_resolution);
+  virtual double getFrontierGain(const Frontier& frontier, double map_resolution);
 
 public:
   ExploreFrontier(const Costmap2DClient* costmap);
