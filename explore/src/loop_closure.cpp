@@ -55,8 +55,7 @@ LoopClosure::LoopClosure(double addition_dist_min,
                          double slam_entropy_max_,
                          double graph_update_frequency, 
                          actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>& move_base_client,
-                         Costmap2DClient& costmap,
-                         boost::mutex& control_mutex) :
+                         Costmap2DClient& costmap) :
         curr_node_(NULL), 
         addition_dist_min_(addition_dist_min), 
         loop_dist_min_(loop_dist_min),
@@ -67,7 +66,7 @@ LoopClosure::LoopClosure(double addition_dist_min,
         nh_(),
         marker_id_(0),
         costmap_(costmap),
-        control_mutex_(control_mutex),
+        // control_mutex_(control_mutex),
         planner_(NULL),
         slam_entropy_(0.0),
         slam_entropy_time_(ros::Time::now().toSec())
@@ -112,7 +111,8 @@ LoopClosure::updateGraph(const tf::Pose& pose)
     if(checkLoopClosure(pose, candidates))
     {
       // We found some. Time to control the robot
-      control_mutex_.lock();
+      // TODO: fix locking - this is tolly broken!!!
+      // control_mutex_.lock();
       // Control the robot
       ROS_INFO("Taking control of the robot for loop closure goals.");
 
@@ -184,7 +184,7 @@ LoopClosure::updateGraph(const tf::Pose& pose)
         ROS_INFO("Adding edge from connector node to entry point");
       }
 
-      control_mutex_.unlock();
+      // control_mutex_.unlock();
       ROS_INFO("Entropy threshold satisfied (%.3f <= %.3f); loop closure terminated",
                slam_entropy_, entry_point->slam_entropy_);
     }

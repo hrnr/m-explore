@@ -89,8 +89,9 @@ class LoopClosure
                 double slam_entropy_max_,
                 double graph_update_frequency,
                 actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>& move_base_client,
-                Costmap2DClient& costmap,
-                boost::mutex& control_mutex);
+                Costmap2DClient& costmap
+                // boost::mutex& control_mutex
+                );
     ~LoopClosure();
 
     // Call this periodically to let loop closure update its graph.  It may
@@ -223,7 +224,7 @@ class LoopClosure
     int marker_id_;
     Costmap2DClient& costmap_;
     // Mutex to lock when commanding the robot
-    boost::mutex& control_mutex_;
+    // boost::mutex& control_mutex_;
     navfn::NavfnROS* planner_;
     double slam_entropy_;
     double slam_entropy_time_;

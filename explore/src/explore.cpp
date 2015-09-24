@@ -46,92 +46,64 @@ using namespace geometry_msgs;
 
 namespace explore {
 
-double sign(double x){
-  return x < 0.0 ? -1.0 : 1.0;
-}
-
 Explore::Explore() :
-  node_(),
-  tf_(ros::Duration(10.0)),
-  explore_costmap_ros_(NULL),
+  private_nh_("~"),
+  tf_listener_(ros::Duration(10.0)),
+  costmap_client_(private_nh_, relative_nh_, tf_listener_),
+  planner_("explore_planner", costmap_client_.getCostmap(),
+    costmap_client_.getGlobalFrameID()),
   move_base_client_("move_base"),
-  planner_(NULL),
-  done_exploring_(false),
-  explorer_(NULL),
-  prev_plan_size_(0)
+  explorer_(&costmap_client_),
+  prev_plan_size_(0),
+  done_exploring_(false)
 {
-  ros::NodeHandle private_nh("~");
-  ros::NodeHandle relative_nh;
+  marker_array_publisher_ = private_nh_.advertise<visualization_msgs::MarkerArray>("frontiers", 10);
 
-  marker_array_publisher_ = private_nh.advertise<visualization_msgs::MarkerArray>("frontiers", 10);
-
-  private_nh.param("planner_frequency", planner_frequency_, 1.0);
-  private_nh.param("progress_timeout", progress_timeout_, 30.0);
-  private_nh.param("visualize", visualize_, false);
+  private_nh_.param("planner_frequency", planner_frequency_, 1.0);
+  private_nh_.param("progress_timeout", progress_timeout_, 30.0);
+  private_nh_.param("visualize", visualize_, false);
   double loop_closure_addition_dist_min;
   double loop_closure_loop_dist_min;
   double loop_closure_loop_dist_max;
   double loop_closure_slam_entropy_max;
-  private_nh.param("close_loops", close_loops_, false); // TODO: switch default to true once gmapping 1.1 has been released
-  private_nh.param("loop_closure_addition_dist_min", loop_closure_addition_dist_min, 2.5);
-  private_nh.param("loop_closure_loop_dist_min", loop_closure_loop_dist_min, 6.0);
-  private_nh.param("loop_closure_loop_dist_max", loop_closure_loop_dist_max, 20.0);
-  private_nh.param("loop_closure_slam_entropy_max", loop_closure_slam_entropy_max, 3.0);
-  private_nh.param("potential_scale", potential_scale_, 1e-3);
-  private_nh.param("orientation_scale", orientation_scale_, 0.0); // TODO: set this back to 0.318 once getOrientationChange is fixed
-  private_nh.param("gain_scale", gain_scale_, 1.0);
+  private_nh_.param("close_loops", close_loops_, false); // TODO: switch default to true once gmapping 1.1 has been released
+  private_nh_.param("loop_closure_addition_dist_min", loop_closure_addition_dist_min, 2.5);
+  private_nh_.param("loop_closure_loop_dist_min", loop_closure_loop_dist_min, 6.0);
+  private_nh_.param("loop_closure_loop_dist_max", loop_closure_loop_dist_max, 20.0);
+  private_nh_.param("loop_closure_slam_entropy_max", loop_closure_slam_entropy_max, 3.0);
+  private_nh_.param("potential_scale", potential_scale_, 1e-3);
+  private_nh_.param("orientation_scale", orientation_scale_, 0.0); // TODO: set this back to 0.318 once getOrientationChange is fixed
+  private_nh_.param("gain_scale", gain_scale_, 1.0);
 
-  explore_costmap_ros_ = new Costmap2DClient(private_nh, relative_nh, tf_);
   // TODO is this necessary?
-  // explore_costmap_ros_->clearRobotFootprint();
-
-  planner_ = new navfn::NavfnROS("explore_planner",
-    explore_costmap_ros_->getCostmap(), explore_costmap_ros_->getGlobalFrameID());
-  explorer_ = new ExploreFrontier(explore_costmap_ros_);
-  loop_closure_ = new LoopClosure(loop_closure_addition_dist_min,
-        loop_closure_loop_dist_min,
-        loop_closure_loop_dist_max,
-        loop_closure_slam_entropy_max,
-        planner_frequency_,
-        move_base_client_,
-        *explore_costmap_ros_,
-        client_mutex_);
-}
-
-Explore::~Explore() {
-  if(loop_closure_ != NULL)
-    delete loop_closure_;
-
-  if(planner_ != NULL)
-    delete planner_;
-
-  if(explorer_ != NULL)
-    delete explorer_;
-
-  if(explore_costmap_ros_ != NULL)
-    delete explore_costmap_ros_;
+  // costmap_client_->clearRobotFootprint();
+  loop_closure_ = std::unique_ptr<LoopClosure>(new LoopClosure( 
+    loop_closure_addition_dist_min,
+    loop_closure_loop_dist_min,
+    loop_closure_loop_dist_max,
+    loop_closure_slam_entropy_max,
+    planner_frequency_,
+    move_base_client_,
+    costmap_client_
+  ));
 }
 
 void Explore::publishFrontiers() {
   visualization_msgs::MarkerArray markers;
-  explorer_->getVisualizationMarkers(markers);
+  explorer_.getVisualizationMarkers(markers);
   ROS_DEBUG("publishing %lu markers", markers.markers.size());
   marker_array_publisher_.publish(markers);
 }
 
 void Explore::makePlan() {
-  //since this gets called on handle activate
-  if(explore_costmap_ros_ == NULL)
-    return;
-
   tf::Stamped<tf::Pose> robot_pose;
-  explore_costmap_ros_->getRobotPose(robot_pose);
+  costmap_client_.getRobotPose(robot_pose);
 
   std::vector<geometry_msgs::Pose> goals;
   // TODO is this necessary?
-  // explore_costmap_ros_->clearRobotFootprint();
+  // costmap_client_->clearRobotFootprint();
 
-  explorer_->getExplorationGoals(*explore_costmap_ros_, robot_pose, planner_, goals, potential_scale_, orientation_scale_, gain_scale_);
+  explorer_.getExplorationGoals(costmap_client_, robot_pose, &planner_, goals, potential_scale_, orientation_scale_, gain_scale_);
   if (goals.size() == 0) {
     done_exploring_ = true;
     ROS_DEBUG("no explorations goals found");
@@ -149,9 +121,9 @@ void Explore::makePlan() {
   PoseStamped goal_pose, robot_pose_msg;
   tf::poseStampedTFToMsg(robot_pose, robot_pose_msg);
 
-  goal_pose.header.frame_id = explore_costmap_ros_->getGlobalFrameID();
+  goal_pose.header.frame_id = costmap_client_.getGlobalFrameID();
   goal_pose.header.stamp = ros::Time::now();
-  planner_->computePotential(robot_pose_msg.pose.position); // just to be safe, though this should already have been done in explorer_->getExplorationGoals
+  planner_.computePotential(robot_pose_msg.pose.position); // just to be safe, though this should already have been done in explorer_->getExplorationGoals
   int blacklist_count = 0;
   for (unsigned int i=0; i<goals.size(); i++) {
     goal_pose.pose = goals[i];
@@ -160,7 +132,7 @@ void Explore::makePlan() {
       continue;
     }
 
-    valid_plan = ((planner_->getPlanFromPotential(goal_pose, plan)) && (!plan.empty()));
+    valid_plan = (planner_.getPlanFromPotential(goal_pose, plan) && (!plan.empty()));
     if (valid_plan) {
       ROS_DEBUG("got valid plan");
       break;
@@ -203,7 +175,7 @@ void Explore::makePlan() {
 }
 
 bool Explore::goalOnBlacklist(const geometry_msgs::PoseStamped& goal){
-  Costmap2D *costmap2d = explore_costmap_ros_->getCostmap();
+  Costmap2D *costmap2d = costmap_client_.getCostmap();
 
   //check if a goal is on the blacklist for goals that we're pursuing
   for(unsigned int i = 0; i < frontier_blacklist_.size(); ++i){
@@ -216,8 +188,10 @@ bool Explore::goalOnBlacklist(const geometry_msgs::PoseStamped& goal){
   return false;
 }
 
-void Explore::reachedGoal(const actionlib::SimpleClientGoalState& status,
-    const move_base_msgs::MoveBaseResultConstPtr& result, geometry_msgs::PoseStamped frontier_goal){
+void Explore::reachedGoal(
+  const actionlib::SimpleClientGoalState& status,
+  const move_base_msgs::MoveBaseResultConstPtr&,
+  const geometry_msgs::PoseStamped& frontier_goal){
 
   ROS_DEBUG("Reached goal");
   if(status == actionlib::SimpleClientGoalState::ABORTED){
@@ -235,7 +209,7 @@ void Explore::reachedGoal(const actionlib::SimpleClientGoalState& status,
 }
 
 void Explore::execute() {
-  while (! move_base_client_.waitForServer(ros::Duration(5,0)))
+  while (!move_base_client_.waitForServer(ros::Duration(5,0)))
     ROS_WARN("Waiting to connect to move_base server");
 
   ROS_INFO("Connected to move_base server");
@@ -244,11 +218,11 @@ void Explore::execute() {
   makePlan();
 
   ros::Rate r(planner_frequency_);
-  while (node_.ok() && (!done_exploring_)) {
+  while (relative_nh_.ok() && (!done_exploring_)) {
 
     if (close_loops_) {
       tf::Stamped<tf::Pose> robot_pose;
-      explore_costmap_ros_->getRobotPose(robot_pose);
+      costmap_client_.getRobotPose(robot_pose);
       loop_closure_->updateGraph(robot_pose);
     }
 

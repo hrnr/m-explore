@@ -3,6 +3,7 @@
  * Software License Agreement (BSD License)
  *
  *  Copyright (c) 2008, Robert Bosch LLC.
+ *  Copyright (c) 2015, Jiri Horner.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -38,15 +39,12 @@
 
 #include <vector>
 #include <string>
-
-#include <boost/thread/mutex.hpp>
+#include <memory>
 
 #include <ros/ros.h>
 #include <move_base_msgs/MoveBaseAction.h>
 #include <actionlib/client/simple_action_client.h>
 #include <geometry_msgs/PoseStamped.h>
-#include <nav_msgs/GetMap.h>
-#include <costmap_2d/costmap_2d.h>
 #include <navfn/navfn_ros.h>
 #include <visualization_msgs/MarkerArray.h>
 
@@ -62,24 +60,8 @@ namespace explore {
  */
 class Explore {
 public:
-  /**
-   * @brief  Constructor
-   * @return
-   */
   Explore();
 
-  /**
-   * @brief  Destructor - Cleans up
-   */
-  virtual ~Explore();
-
-  /**
-   * @brief  Runs whenever a new goal is sent to the move_base
-   * @param goal The goal to pursue
-   * @param feedback Feedback that the action gives to a higher-level monitor, in this case, the position of the robot
-   * @return The result of the execution, ie: Success, Preempted, Aborted, etc.
-   */
-//  virtual robot_actions::ResultStatus execute(const ExploreGoal& goal, ExploreFeedback& feedback);
   void execute();
 
   void spin();
@@ -95,37 +77,35 @@ private:
    */
   void publishFrontiers();
 
-  void reachedGoal(const actionlib::SimpleClientGoalState& status, const move_base_msgs::MoveBaseResultConstPtr& result, geometry_msgs::PoseStamped frontier_goal);
+  void reachedGoal(
+    const actionlib::SimpleClientGoalState& status,
+    const move_base_msgs::MoveBaseResultConstPtr& result,
+    const geometry_msgs::PoseStamped& frontier_goal);
 
   bool goalOnBlacklist(const geometry_msgs::PoseStamped& goal);
 
-  ros::NodeHandle node_;
-  tf::TransformListener tf_;
-  Costmap2DClient* explore_costmap_ros_;
-
-  actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> move_base_client_;
-
-  navfn::NavfnROS* planner_;
-  bool done_exploring_;
-
-  ros::Publisher marker_publisher_;
+  ros::NodeHandle private_nh_;
+  ros::NodeHandle relative_nh_;
   ros::Publisher marker_array_publisher_;
   ros::Publisher map_publisher_;
-  ros::ServiceServer map_server_;
+  tf::TransformListener tf_listener_;
 
-  ExploreFrontier* explorer_;
+  Costmap2DClient costmap_client_;
+  navfn::NavfnROS planner_;
+  actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> move_base_client_;
+  ExploreFrontier explorer_;
+  std::unique_ptr<LoopClosure> loop_closure_;
 
   tf::Stamped<tf::Pose> global_pose_;
   double planner_frequency_;
-  bool visualize_;
-  LoopClosure* loop_closure_;
   std::vector<geometry_msgs::PoseStamped> frontier_blacklist_;
   geometry_msgs::PoseStamped prev_goal_;
-  unsigned int prev_plan_size_;
+  size_t prev_plan_size_;
   double time_since_progress_, progress_timeout_;
   double potential_scale_, orientation_scale_, gain_scale_;
-  boost::mutex client_mutex_;
-  bool   close_loops_;
+  bool close_loops_;
+  bool done_exploring_;
+  bool visualize_;
 };
 
 }

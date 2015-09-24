@@ -3,6 +3,7 @@
  * Software License Agreement (BSD License)
  *
  *  Copyright (c) 2008, Robert Bosch LLC.
+ *  Copyright (c) 2015, Jiri Horner.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
