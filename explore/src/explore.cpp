@@ -49,7 +49,7 @@ namespace explore {
 Explore::Explore() :
   private_nh_("~"),
   tf_listener_(ros::Duration(10.0)),
-  costmap_client_(private_nh_, relative_nh_, tf_listener_),
+  costmap_client_(private_nh_, relative_nh_, &tf_listener_),
   planner_("explore_planner", costmap_client_.getCostmap(),
     costmap_client_.getGlobalFrameID()),
   move_base_client_("move_base"),

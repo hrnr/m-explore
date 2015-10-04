@@ -13,8 +13,7 @@ std::array<unsigned char, 256> init_translation_table();
 static const std::array<unsigned char, 256> cost_translation_table__ = init_translation_table();
 
 Costmap2DClient::Costmap2DClient(ros::NodeHandle& param_nh, ros::NodeHandle& subscription_nh,
-  tf::TransformListener& tf) :
-    costmap_(new costmap_2d::Costmap2D()),
+  const tf::TransformListener* tf) :
     tf_(tf)
 {
   /* initialize costmap */
@@ -68,7 +67,7 @@ Costmap2DClient::Costmap2DClient(ros::NodeHandle& param_nh, ros::NodeHandle& sub
   std::string tf_error;
   // we need to make sure that the transform between the robot base frame and the global frame is available
   while (ros::ok()
-      && !tf_.waitForTransform(global_frame_, robot_base_frame_, ros::Time(), ros::Duration(0.1), ros::Duration(0.01),
+      && !tf_->waitForTransform(global_frame_, robot_base_frame_, ros::Time(), ros::Duration(0.1), ros::Duration(0.01),
                                &tf_error))
   {
     ros::spinOnce();
@@ -96,15 +95,15 @@ void Costmap2DClient::updateFullMap(const nav_msgs::OccupancyGrid::ConstPtr& msg
   double origin_y = msg->info.origin.position.y;
 
   ROS_DEBUG("received full new map, resizing to: %d, %d", size_in_cells_x, size_in_cells_y);
-  costmap_->resizeMap(size_in_cells_x, size_in_cells_y, resolution, origin_x, origin_y);
+  costmap_.resizeMap(size_in_cells_x, size_in_cells_y, resolution, origin_x, origin_y);
 
   // lock as we are accessing raw underlying map
-  auto *mutex = costmap_->getLock();
+  auto *mutex = costmap_.getLock();
   std::lock_guard<decltype(*mutex)> lock(*mutex);
 
   // fill map with data
-  unsigned char* costmap_data = costmap_->getCharMap();
-  size_t costmap_size = costmap_->getSizeInCellsX() * costmap_->getSizeInCellsY();
+  unsigned char* costmap_data = costmap_.getCharMap();
+  size_t costmap_size = costmap_.getSizeInCellsX() * costmap_.getSizeInCellsY();
   ROS_DEBUG("full map update, %lu values", costmap_size);
   for (size_t i = 0; i < costmap_size && i < msg->data.size(); ++i)
   {
@@ -131,11 +130,11 @@ void Costmap2DClient::updatePartialMap(const map_msgs::OccupancyGridUpdate::Cons
   size_t yn = msg->height + y0;
 
   // lock as we are accessing raw underlying map
-  auto *mutex = costmap_->getLock();
+  auto *mutex = costmap_.getLock();
   std::lock_guard<decltype(*mutex)> lock(*mutex);
 
-  size_t costmap_xn = costmap_->getSizeInCellsX();
-  size_t costmap_yn = costmap_->getSizeInCellsY();
+  size_t costmap_xn = costmap_.getSizeInCellsX();
+  size_t costmap_yn = costmap_.getSizeInCellsY();
 
   if (xn > costmap_xn ||
       x0 > costmap_xn ||
@@ -148,13 +147,13 @@ void Costmap2DClient::updatePartialMap(const map_msgs::OccupancyGridUpdate::Cons
   }
 
   // update map with data
-  unsigned char* costmap_data = costmap_->getCharMap();
+  unsigned char* costmap_data = costmap_.getCharMap();
   size_t i = 0;
   for (size_t y = y0; y < yn && y < costmap_yn; ++y)
   {
     for (size_t x = x0; x < xn && x < costmap_xn; ++x)
     {
-      size_t idx = costmap_->getIndex(x, y);
+      size_t idx = costmap_.getIndex(x, y);
       unsigned char cell_cost = static_cast<unsigned char>(msg->data[i]);
       costmap_data[idx] = cost_translation_table__[cell_cost];
       ++i;
@@ -191,7 +190,7 @@ bool Costmap2DClient::getRobotPose(tf::Stamped<tf::Pose>& global_pose) const
   // get the global pose of the robot
   try
   {
-    tf_.transformPose(global_frame_, robot_pose, global_pose);
+    tf_->transformPose(global_frame_, robot_pose, global_pose);
   }
   catch (tf::LookupException& ex)
   {
