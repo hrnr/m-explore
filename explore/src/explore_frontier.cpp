@@ -35,34 +35,27 @@
  *
  *********************************************************************/
 
-/*
- *  Created on: Apr 6, 2009
- *      Author: duhadway
- */
-
 #include <explore/explore_frontier.h>
 
+#include <exception>
 #include <boost/thread.hpp>
 
 namespace explore {
 
-ExploreFrontier::ExploreFrontier(const Costmap2DClient* costmap) :
-  map_(),
-  last_markers_count_(0),
-  planner_(NULL),
-  costmap_(costmap),
-  frontiers_()
-{
-}
+ExploreFrontier::ExploreFrontier(Costmap2DClient* costmap, navfn::NavfnROS* planner) :
+  costmap_client_(costmap),
+  costmap_(costmap_client_->getCostmap()),
+  planner_(planner),
+  last_markers_count_(0)
+  {
+    if (!costmap || !planner) {
+      throw std::invalid_argument("costmap and planner passed to constructor may not be NULL");
+    }
+  }
 
-ExploreFrontier::~ExploreFrontier()
+bool ExploreFrontier::getFrontiers(std::vector<geometry_msgs::Pose>& frontiers)
 {
-
-}
-
-bool ExploreFrontier::getFrontiers(Costmap2DClient& costmap, std::vector<geometry_msgs::Pose>& frontiers)
-{
-  findFrontiers(costmap);
+  findFrontiers();
   if (frontiers_.size() == 0)
     return false;
 
@@ -78,14 +71,14 @@ double ExploreFrontier::getFrontierCost(const Frontier& frontier) {
   ROS_DEBUG("cost of frontier: %f, at position: (%.2f, %.2f, %.2f)",
     planner_->getPointPotential(frontier.pose.position),
     frontier.pose.position.x, frontier.pose.position.y, tf::getYaw(frontier.pose.orientation));
-  if (planner_ != nullptr)
-    return planner_->getPointPotential(frontier.pose.position); // / 20000.0;
-  else
-    return 1.0;
+
+  return planner_->getPointPotential(frontier.pose.position); // / 20000.0;
 }
 
 // TODO: what is this doing exactly?
-double ExploreFrontier::getOrientationChange(const Frontier& frontier, const tf::Stamped<tf::Pose>& robot_pose){
+double ExploreFrontier::getOrientationChange(
+  const Frontier& frontier,
+  const tf::Stamped<tf::Pose>& robot_pose) const {
   double robot_yaw = tf::getYaw(robot_pose.getRotation());
   double robot_atan2 = atan2(robot_pose.getOrigin().y()
     + sin(robot_yaw), robot_pose.getOrigin().x() + cos(robot_yaw));
@@ -95,16 +88,16 @@ double ExploreFrontier::getOrientationChange(const Frontier& frontier, const tf:
   return orientation_change;
 }
 
-double ExploreFrontier::getFrontierGain(const Frontier& frontier, double map_resolution) {
-  return frontier.size * map_resolution;
+double ExploreFrontier::getFrontierGain(const Frontier& frontier) const {
+  return frontier.size * costmap_->getResolution();
 }
 
-bool ExploreFrontier::getExplorationGoals(Costmap2DClient& costmap, tf::Stamped<tf::Pose> robot_pose, navfn::NavfnROS* planner, std::vector<geometry_msgs::Pose>& goals, double potential_scale, double orientation_scale, double gain_scale)
+bool ExploreFrontier::getExplorationGoals(
+  tf::Stamped<tf::Pose> robot_pose,
+  std::vector<geometry_msgs::Pose>& goals,
+  double potential_scale, double orientation_scale, double gain_scale)
 {
-  costmap_2d::Costmap2D *costmap2d = costmap.getCostmap();
-  double costmap_resolution = costmap2d->getResolution();
-
-  findFrontiers(costmap);
+  findFrontiers();
 
   if (frontiers_.size() == 0) {
     ROS_DEBUG("no frontiers found");
@@ -115,10 +108,7 @@ bool ExploreFrontier::getExplorationGoals(Costmap2DClient& costmap, tf::Stamped<
   start.x = robot_pose.getOrigin().x();
   start.y = robot_pose.getOrigin().y();
   start.z = robot_pose.getOrigin().z();
-  planner->computePotential(start);
-
-  // TODO: get rid of this
-  planner_ = planner;
+  planner_->computePotential(start);
 
   //we'll make sure that we set goals for the frontier at least the circumscribed
   //radius away from unknown space
@@ -158,7 +148,7 @@ bool ExploreFrontier::getExplorationGoals(Costmap2DClient& costmap, tf::Stamped<
     weightedFrontier.cost =
       potential_scale * getFrontierCost(weightedFrontier.frontier)
       + orientation_scale * getOrientationChange(weightedFrontier.frontier, robot_pose)
-      - gain_scale * getFrontierGain(weightedFrontier.frontier, costmap_resolution);
+      - gain_scale * getFrontierGain(weightedFrontier.frontier);
     weightedFrontiers.push_back(std::move(weightedFrontier));
   }
 
@@ -171,28 +161,26 @@ bool ExploreFrontier::getExplorationGoals(Costmap2DClient& costmap, tf::Stamped<
   return (goals.size() > 0);
 }
 
-void ExploreFrontier::findFrontiers(Costmap2DClient& costmap_) {
+void ExploreFrontier::findFrontiers() {
   frontiers_.clear();
 
-  costmap_2d::Costmap2D *costmap = costmap_.getCostmap();
-
-  const size_t w = costmap->getSizeInCellsX();
-  const size_t h = costmap->getSizeInCellsY();
+  const size_t w = costmap_->getSizeInCellsX();
+  const size_t h = costmap_->getSizeInCellsY();
   const size_t size = w * h;
 
   map_.info.width = w;
   map_.info.height = h;
   map_.data.resize(size);
-  map_.info.resolution = costmap->getResolution();
-  map_.info.origin.position.x = costmap->getOriginX();
-  map_.info.origin.position.y = costmap->getOriginY();
+  map_.info.resolution = costmap_->getResolution();
+  map_.info.origin.position.x = costmap_->getOriginX();
+  map_.info.origin.position.y = costmap_->getOriginY();
 
   // lock as we are accessing raw underlying map
-  auto *mutex = costmap->getLock();
+  auto *mutex = costmap_->getLock();
   boost::shared_lock<boost::shared_mutex> lock(*mutex);
 
   // Find all frontiers (open cells next to unknown cells).
-  const unsigned char* map = costmap->getCharMap();
+  const unsigned char* map = costmap_->getCharMap();
   ROS_DEBUG_COND(!map, "no map available");
   for (size_t i = 0; i < size; ++i) {
 //    //get the world point for the index
@@ -310,7 +298,7 @@ void ExploreFrontier::findFrontiers(Costmap2DClient& costmap_) {
     size_t segment_size = segment.size();
 
     //we want to make sure that the frontier is big enough for the robot to fit through
-    if (segment_size * costmap->getResolution() < costmap_.getInscribedRadius()) {
+    if (segment_size * costmap_->getResolution() < costmap_client_->getInscribedRadius()) {
       ROS_DEBUG_THROTTLE(30, "some frontiers were small");
       continue;
     }
@@ -343,7 +331,7 @@ void ExploreFrontier::getVisualizationMarkers(visualization_msgs::MarkerArray& m
   std::vector<visualization_msgs::Marker>& markers = markers_msg.markers;
   visualization_msgs::Marker m;
 
-  m.header.frame_id = costmap_->getGlobalFrameID();
+  m.header.frame_id = costmap_client_->getGlobalFrameID();
   m.header.stamp = ros::Time::now();
   m.ns = "frontiers";
   m.type = visualization_msgs::Marker::ARROW;

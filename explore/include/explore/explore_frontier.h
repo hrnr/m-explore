@@ -3,6 +3,7 @@
  * Software License Agreement (BSD License)
  *
  *  Copyright (c) 2008, Robert Bosch LLC.
+ *  Copyright (c) 2015, Jiri Horner.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -37,37 +38,39 @@
 #ifndef EXPLORE_FRONTIER_H_
 #define EXPLORE_FRONTIER_H_
 
-#include <nav_msgs/GetMap.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <geometry_msgs/Pose.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <tf/LinearMath/Vector3.h>
 #include <navfn/navfn_ros.h>
-#include <tf/transform_listener.h>
 
 #include <explore/costmap_client.h>
 
 namespace explore {
 
-struct FrontierPoint{
+struct FrontierPoint {
   size_t idx;     //position
   tf::Vector3 d; //direction
 
-  FrontierPoint(size_t idx_, tf::Vector3 d_) : idx(idx_), d(d_) {}
+  FrontierPoint() : idx(0) {}
+  FrontierPoint(size_t idx_, const tf::Vector3& d_) : idx(idx_), d(d_) {}
 };
 
 struct Frontier {
-  geometry_msgs::Pose pose;
   size_t size;
-  Frontier():pose(),size(0) {}
+  geometry_msgs::Pose pose;
+
+  Frontier() : size(0) {}
+  Frontier(size_t size_, const geometry_msgs::Pose& pose_) : size(size_), pose(pose_) {}
 };
 
 struct WeightedFrontier {
-  Frontier frontier;
   double cost;
+  Frontier frontier;
+
+  WeightedFrontier() : cost(1e9) {}
+  WeightedFrontier(double cost_, const Frontier& frontier_) : cost(cost_), frontier(frontier_) {}
   bool operator<(const WeightedFrontier& o) const { return cost < o.cost; }
-  WeightedFrontier():frontier(),cost(1e9) {}
-  WeightedFrontier(const WeightedFrontier& copy) { frontier = copy.frontier; cost = copy.cost; }
 };
 
 /**
@@ -76,58 +79,60 @@ struct WeightedFrontier {
  */
 class ExploreFrontier {
 private:
+  // can't be const as we will do locking
+  Costmap2DClient* const costmap_client_;
+  costmap_2d::Costmap2D* const costmap_;
+  navfn::NavfnROS* const planner_;
+
   nav_msgs::OccupancyGrid map_;
+  std::vector<Frontier> frontiers_;
 
   size_t last_markers_count_;
 
-  navfn::NavfnROS* planner_;
-  const Costmap2DClient* costmap_;
-protected:
-  std::vector<Frontier> frontiers_;
-
   /**
    * @brief Finds frontiers and populates frontiers_
-   * @param costmap The costmap to search for frontiers
    */
-  virtual void findFrontiers(Costmap2DClient& costmap);
+  void findFrontiers();
 
   /**
    * @brief Calculates cost to explore frontier
    * @param frontier to evaluate
    */
-  virtual double getFrontierCost(const Frontier& frontier);
+  double getFrontierCost(const Frontier& frontier);
 
   /**
    * @brief Calculates how much the robot would have to turn to face this frontier
    * @param frontier to evaluate
    * @param robot_pose current pose
    */
-  virtual double getOrientationChange(const Frontier& frontier, const tf::Stamped<tf::Pose>& robot_pose);
+  double getOrientationChange(const Frontier& frontier, const tf::Stamped<tf::Pose>& robot_pose) const;
 
   /**
    * @brief Calculates potential information gain of exploring frontier
    * @param frontier to evaluate
    */
-  virtual double getFrontierGain(const Frontier& frontier, double map_resolution);
+  double getFrontierGain(const Frontier& frontier) const;
 
 public:
-  ExploreFrontier(const Costmap2DClient* costmap);
-  virtual ~ExploreFrontier();
+  /**
+   * @brief Constructs ExploreFrintier with costmap to work on
+   * @param costmap The costmap to search for frontiers
+   * @param planner A planner to evaluate the cost of going to any frontier
+   * @throws std::invalid_argument if any argument is NULL
+   */
+  ExploreFrontier(Costmap2DClient* costmap, navfn::NavfnROS* planner);
 
   /**
    * @brief Returns all frontiers
-   * @param costmap The costmap to search for frontiers
    * @param frontiers Will be filled with current frontiers
    * @return True if at least one frontier was found
    */
-  virtual bool getFrontiers(Costmap2DClient& costmap, std::vector<geometry_msgs::Pose>& frontiers);
+  bool getFrontiers(std::vector<geometry_msgs::Pose>& frontiers);
 
   /**
    * @brief Returns a list of frontiers, sorted by the planners estimated cost to visit each frontier
-   * @param costmap The costmap to search for frontiers
    * @param start The current position of the robot
    * @param goals Will be filled with sorted list of current goals
-   * @param planner A planner to evaluate the cost of going to any frontier
    * @param cost_scale A scaling for the potential to a frontier goal point for the frontier's cost
    * @param orientation_scale A scaling for the change in orientation required to get to a goal point for the frontier's cost
    * @param gain_scale A scaling for the expected information gain to get to a goal point for the frontier's cost
@@ -141,13 +146,17 @@ public:
    * improves the robustness of goals which may lie near other obstacles
    * which would prevent planning.
    */
-  virtual bool getExplorationGoals(Costmap2DClient& costmap, tf::Stamped<tf::Pose> start, navfn::NavfnROS* planner, std::vector<geometry_msgs::Pose>& goals, double cost_scale, double orientation_scale, double gain_scale);
+  bool getExplorationGoals(
+    tf::Stamped<tf::Pose> start,
+    std::vector<geometry_msgs::Pose>& goals,
+    double cost_scale, double orientation_scale, double gain_scale
+  );
 
   /**
    * @brief  Returns markers representing all frontiers
    * @param markers All markers will be added to this vector
    */
-  virtual void getVisualizationMarkers(visualization_msgs::MarkerArray& markers);
+  void getVisualizationMarkers(visualization_msgs::MarkerArray& markers);
 };
 
 }

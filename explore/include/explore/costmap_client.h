@@ -22,17 +22,21 @@ public:
    */
   bool getRobotPose(tf::Stamped<tf::Pose>& global_pose) const;
 
-  /** @brief Return a pointer to the "master" costmap which receives updates from all the layers.
+  /**
+   * @brief Return a pointer to the "master" costmap which receives updates from all the layers.
    *
-   * Same as calling getLayeredCostmap()->getCostmap(). */
+   * This pointer will stay the same for the lifetime of Costmap2DClient object.
+   */
   costmap_2d::Costmap2D* getCostmap()
     {
       return costmap_.get();
     }
 
-  /** @brief Return a pointer to the "master" costmap which receives updates from all the layers.
+  /**
+   * @brief Return a pointer to the "master" costmap which receives updates from all the layers.
    *
-   * Same as calling getLayeredCostmap()->getCostmap(). */
+   * This pointer will stay the same for the lifetime of Costmap2DClient object.
+   */
   const costmap_2d::Costmap2D* getCostmap() const
     {
       return costmap_.get();

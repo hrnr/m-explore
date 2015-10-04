@@ -53,7 +53,7 @@ Explore::Explore() :
   planner_("explore_planner", costmap_client_.getCostmap(),
     costmap_client_.getGlobalFrameID()),
   move_base_client_("move_base"),
-  explorer_(&costmap_client_),
+  explorer_(&costmap_client_, &planner_),
   prev_plan_size_(0),
   done_exploring_(false)
 {
@@ -103,7 +103,7 @@ void Explore::makePlan() {
   // TODO is this necessary?
   // costmap_client_->clearRobotFootprint();
 
-  explorer_.getExplorationGoals(costmap_client_, robot_pose, &planner_, goals, potential_scale_, orientation_scale_, gain_scale_);
+  explorer_.getExplorationGoals(robot_pose, goals, potential_scale_, orientation_scale_, gain_scale_);
   if (goals.size() == 0) {
     done_exploring_ = true;
     ROS_DEBUG("no explorations goals found");
