@@ -3,6 +3,7 @@
  * Software License Agreement (BSD License)
  *
  *  Copyright (c) 2008, Robert Bosch LLC.
+ *  Copyright (c) 2015, Jiri Horner.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -37,12 +38,7 @@
 #include <explore/explore.h>
 #include <explore/explore_frontier.h>
 
-#include <boost/thread.hpp>
-#include <boost/bind.hpp>
-
-using namespace costmap_2d;
-using namespace navfn;
-using namespace geometry_msgs;
+#include <thread>
 
 namespace explore {
 
@@ -118,21 +114,21 @@ void Explore::makePlan() {
 
   bool valid_plan = false;
   std::vector<geometry_msgs::PoseStamped> plan;
-  PoseStamped goal_pose, robot_pose_msg;
+  geometry_msgs::PoseStamped goal_pose, robot_pose_msg;
   tf::poseStampedTFToMsg(robot_pose, robot_pose_msg);
 
   goal_pose.header.frame_id = costmap_client_.getGlobalFrameID();
   goal_pose.header.stamp = ros::Time::now();
   planner_.computePotential(robot_pose_msg.pose.position); // just to be safe, though this should already have been done in explorer_->getExplorationGoals
-  int blacklist_count = 0;
-  for (unsigned int i=0; i<goals.size(); i++) {
-    goal_pose.pose = goals[i];
+  size_t blacklist_count = 0;
+  for (auto& goal : goals) {
+    goal_pose.pose = goal;
     if (goalOnBlacklist(goal_pose)) {
-      blacklist_count++;
+      ++blacklist_count;
       continue;
     }
 
-    valid_plan = (planner_.getPlanFromPotential(goal_pose, plan) && (!plan.empty()));
+    valid_plan = planner_.getPlanFromPotential(goal_pose, plan) && !plan.empty();
     if (valid_plan) {
       ROS_DEBUG("got valid plan");
       break;
@@ -167,20 +163,22 @@ void Explore::makePlan() {
     move_base_client_.sendGoal(goal, boost::bind(&Explore::reachedGoal, this, _1, _2, goal_pose));
 
   } else {
-    ROS_WARN("Done exploring with %d goals left that could not be reached. There are %d goals on our blacklist, and %d of the frontier goals are too close to them to pursue. The rest had global planning fail to them. \n", (int)goals.size(), (int)frontier_blacklist_.size(), blacklist_count);
+    ROS_WARN("Done exploring with %lu goals left that could not be reached."
+      "There are %lu goals on our blacklist, and %lu of the frontier goals are too close to"
+      "them to pursue. The rest had global planning fail to them. \n",
+      goals.size(), frontier_blacklist_.size(), blacklist_count);
     ROS_INFO("Exploration finished. Hooray.");
     done_exploring_ = true;
   }
-
 }
 
 bool Explore::goalOnBlacklist(const geometry_msgs::PoseStamped& goal){
-  Costmap2D *costmap2d = costmap_client_.getCostmap();
+  costmap_2d::Costmap2D *costmap2d = costmap_client_.getCostmap();
 
   //check if a goal is on the blacklist for goals that we're pursuing
-  for(unsigned int i = 0; i < frontier_blacklist_.size(); ++i){
-    double x_diff = fabs(goal.pose.position.x - frontier_blacklist_[i].pose.position.x);
-    double y_diff = fabs(goal.pose.position.y - frontier_blacklist_[i].pose.position.y);
+  for(auto& frontier_goal : frontier_blacklist_) {
+    double x_diff = fabs(goal.pose.position.x - frontier_goal.pose.position.x);
+    double y_diff = fabs(goal.pose.position.y - frontier_goal.pose.position.y);
 
     if(x_diff < 2 * costmap2d->getResolution() && y_diff < 2 * costmap2d->getResolution())
       return true;
@@ -235,12 +233,13 @@ void Explore::execute() {
 
 void Explore::spin() {
   ros::spinOnce();
-  boost::thread t(boost::bind( &Explore::execute, this ));
+  std::thread t(&Explore::execute, this);
   ros::spin();
-  t.join();
+  if (t.joinable())
+    t.join();
 }
 
-}
+} // namespace explore
 
 int main(int argc, char** argv){
   ros::init(argc, argv, "explore");
