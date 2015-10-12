@@ -1,0 +1,9 @@
+<launch>
+<node pkg="map_merge" type="map_merge" respawn="false" name="map_merge" output="screen" >
+  <param name="merging_rate" value="10.0"/>
+  <param name="max_number_robots" value="100"/>
+  <param name="max_comm_distance" value="10.0"/>
+  <param name="pose_topic" value="slam_out_pose"/>
+  <param name="map_topic" value="map"/>
+</node>
+</launch>
