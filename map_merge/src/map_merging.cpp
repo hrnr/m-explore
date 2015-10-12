@@ -43,15 +43,15 @@ MapMerging::MapMerging() {
   private_nh.param<double>("max_comm_distance", max_comm_distance_, 10.0);
   private_nh.param<std::string>("pose_topic", pose_topic_, "pose");
   private_nh.param<std::string>("map_topic", map_topic_, "map");
-  
+
   /* publisher params */
   map_has_been_merged_ = new bool[max_number_robots_]();
   merged_map_publisher_ = private_nh.advertise<nav_msgs::OccupancyGrid>("map", 1, true);
-  
+
   /* get robot's name */
   my_name_ = ros::this_node::getNamespace(); // Get the robot's name.
   my_name_.erase(0, 1); // [ROS_BUG #3671] Remove the first slash in front of the name.
-  
+
   my_id_ = tm_id_ = UNKNOWN;
 }
 
@@ -65,7 +65,7 @@ MapMerging::~MapMerging() {
 void MapMerging::topicSubscribing() {
   ros::master::V_TopicInfo topic_infos;
   ros::master::getTopics(topic_infos);
-  
+
   for(ros::master::V_TopicInfo::const_iterator it_topic = topic_infos.begin(); it_topic != topic_infos.end(); ++it_topic) {
     const ros::master::TopicInfo &published_topic = *it_topic;
     /* robot pose subscribing */
@@ -75,12 +75,12 @@ void MapMerging::topicSubscribing() {
       pose_subsribers_.push_back(node_.subscribe<geometry_msgs::PoseStamped>(published_topic.name, 1, boost::bind(&MapMerging::poseCallback, this, _1, poses_.size()-1)));
       /* get robot's ID */
       if(my_name_.size() > 0 && published_topic.name.compare(0, my_name_.size(), my_name_) == 0) {
-	my_id_ = poses_.size()-1;
-	ROS_INFO("[%s]:My name is %s, ID = %d.", (ros::this_node::getName()).c_str(), my_name_.c_str(), my_id_);
+        my_id_ = poses_.size()-1;
+        ROS_INFO("[%s]:My name is %s, ID = %d.", (ros::this_node::getName()).c_str(), my_name_.c_str(), my_id_);
       }
     }
   }
-  
+
   if(my_id_ == UNKNOWN) {
     ROS_WARN("[%s]:Can not get robot's pose.", (ros::this_node::getName()).c_str());
   }
@@ -92,7 +92,7 @@ void MapMerging::topicSubscribing() {
 void MapMerging::handShaking() {
   if(my_id_ == UNKNOWN || tm_id_ != UNKNOWN)
     return;
-  
+
   geometry_msgs::Pose my_pose, tm_pose;
   if(poses_[my_id_].received && getInitPose(my_name_, my_pose)) {
     my_pose.position.x += poses_[my_id_].data.pose.position.x;
@@ -103,18 +103,18 @@ void MapMerging::handShaking() {
     
     for(int i = 0; i < (int)poses_.size(); i++) {
       if(i != my_id_ && !map_has_been_merged_[i]) {
-	tm_name_ = robotNameParsing(poses_[i].name);
-	if(poses_[i].received && getInitPose(tm_name_, tm_pose)) {
-	  tm_pose.position.x += poses_[i].data.pose.position.x;
-	  tm_pose.position.y += poses_[i].data.pose.position.y;
-	  tm_pose.position.z += poses_[i].data.pose.position.z;
-	  poses_[i].received = false;
-	  if(distBetween(tm_pose.position, my_pose.position) < max_comm_distance_) {
-	    ROS_DEBUG("[%s]:Handshake with %s.", (ros::this_node::getName()).c_str(), tm_name_.c_str());
-	    tm_id_ = i;
-	    break;
-	  }
-	}
+        tm_name_ = robotNameParsing(poses_[i].name);
+        if(poses_[i].received && getInitPose(tm_name_, tm_pose)) {
+          tm_pose.position.x += poses_[i].data.pose.position.x;
+          tm_pose.position.y += poses_[i].data.pose.position.y;
+          tm_pose.position.z += poses_[i].data.pose.position.z;
+          poses_[i].received = false;
+          if(distBetween(tm_pose.position, my_pose.position) < max_comm_distance_) {
+            ROS_DEBUG("[%s]:Handshake with %s.", (ros::this_node::getName()).c_str(), tm_name_.c_str());
+            tm_id_ = i;
+            break;
+          }
+        }
       }
     }
   }
@@ -130,7 +130,7 @@ void MapMerging::handShaking() {
 void MapMerging::mapMerging() {
   if(my_id_ == UNKNOWN || tm_id_ == UNKNOWN)
     return;
-  
+
   std::string map_topic_name;
   for(int i = 0; i < (int)poses_.size(); i++) {
     map_topic_name = robotNameParsing(poses_[i].name)+"/"+map_topic_;
@@ -140,43 +140,43 @@ void MapMerging::mapMerging() {
       ROS_INFO("[%s]:Subscribe to MAP topic: %s.", (ros::this_node::getName()).c_str(), map_topic_name.c_str());
     }
   }
-  
+
   bool map_merging_end = false;
   if(maps_[my_id_].received) {
     if(maps_[tm_id_].received) {
       ROS_DEBUG("[%s]:Exchange map with %s.", (ros::this_node::getName()).c_str(), tm_name_.c_str());
       geometry_msgs::Pose delta;
       if(getRelativePose(my_name_, tm_name_, delta, maps_[my_id_].data.info.resolution)) {
-	//std::cout << "[" << ros::this_node::getName() << "] deltaX = " << delta.position.x << " deltaY = " << delta.position.y << std::endl;
-	if(!map_has_been_merged_[my_id_]) {
-	  merged_map_ = maps_[my_id_].data;
-	  map_has_been_merged_[my_id_] = true;
-	}
-	greedyMerging(round(delta.position.x), round(delta.position.y), tm_id_);	  
-	map_merging_end = true;
+        //std::cout << "[" << ros::this_node::getName() << "] deltaX = " << delta.position.x << " deltaY = " << delta.position.y << std::endl;
+        if(!map_has_been_merged_[my_id_]) {
+          merged_map_ = maps_[my_id_].data;
+          map_has_been_merged_[my_id_] = true;
+        }
+        greedyMerging(round(delta.position.x), round(delta.position.y), tm_id_);
+        map_merging_end = true;
       }
       maps_[tm_id_].received = false;
     }
     maps_[my_id_].received = false;
   }
-  
+
   if(map_merging_end) {
     ROS_DEBUG("[%s]:Map has been merged with %s.", (ros::this_node::getName()).c_str(), tm_name_.c_str());
     map_has_been_merged_[tm_id_] = true;
     tm_id_ = UNKNOWN;
-    
+
     // It has coordinated with all that can be coordinated, so reset.
     bool reset_and_publish = true;
     for(int i = 0; i < (int)poses_.size(); i++) {
       if(!map_has_been_merged_[i]) {
-	reset_and_publish = false;
-	break;
+        reset_and_publish = false;
+        break;
       }
     }
-    
+
     if(reset_and_publish) {
       for(int i = 0; i < (int)poses_.size(); i++)
-	map_has_been_merged_[i] = false;
+        map_has_been_merged_[i] = false;
       merged_map_publisher_.publish(merged_map_);
     }
   }
@@ -222,7 +222,7 @@ std::string MapMerging::robotNameParsing(std::string s) {
   return s.erase(s.find('/', 1), s.size());
 }
 
-/* 
+/*
  * Get robot's initial position
  * TODO: get orientation
  */
@@ -235,7 +235,7 @@ bool MapMerging::getInitPose(std::string name, geometry_msgs::Pose &pose) {
   return false;
 }
 
-/* 
+/*
  * Get the relative position of two robots
  * TODO: get orientation
  */
@@ -268,9 +268,9 @@ void MapMerging::greedyMerging(int delta_x, int delta_y, int map_id) {
   for(int i = 0; i < (int)merged_map_.info.width; i++) {
     for(int j = 0; j < (int)merged_map_.info.height; j++) {
       if(i+delta_x >= 0 && i+delta_x < (int)maps_[map_id].data.info.width &&
-	 j+delta_y >= 0 && j+delta_y < (int)maps_[map_id].data.info.height) {
-	if((int)merged_map_.data[i+j*(int)merged_map_.info.width] == UNKNOWN)
-	  merged_map_.data[i+j*(int)merged_map_.info.width] = maps_[map_id].data.data[i+delta_x+(j+delta_y)*(int)maps_[map_id].data.info.width];
+         j+delta_y >= 0 && j+delta_y < (int)maps_[map_id].data.info.height) {
+        if((int)merged_map_.data[i+j*(int)merged_map_.info.width] == UNKNOWN)
+          merged_map_.data[i+j*(int)merged_map_.info.width] = maps_[map_id].data.data[i+delta_x+(j+delta_y)*(int)maps_[map_id].data.info.width];
       }
     }
   }
