@@ -8,6 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   tf
   roslaunch
+  occupancy_grid_utils
  )
 
 find_package(Boost REQUIRED COMPONENTS thread)

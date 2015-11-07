@@ -3,6 +3,7 @@
  * Software License Agreement (BSD License)
  *
  *  Copyright (c) 2014, Zhi Yan.
+ *  Copyright (c) 2015, Jiri Horner.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -34,36 +35,30 @@
  *
  *********************************************************************/
 
-#ifndef _MAP_MERGING_HPP
-#define _MAP_MERGING_HPP
+#ifndef MAP_MERGE_H_
+#define MAP_MERGE_H_
+
+#include <vector>
+#include <unordered_map>
+#include <mutex>
+#include <forward_list>
 
 #include <ros/ros.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/OccupancyGrid.h>
 
-#include <boost/thread.hpp>
-#include <boost/bind.hpp>
+struct PosedMap {
+  std::mutex mutex;
+  bool updated;
 
-static const int UNKNOWN = -1;
-static const int OBSTACLE = 100;
-static const int FREE = 0;
+  geometry_msgs::Pose initial_pose;
+  geometry_msgs::PoseStamped pose;
+  nav_msgs::OccupancyGrid map;
 
-struct Pose {
-  std::string name;
-  bool received;
-  geometry_msgs::PoseStamped data;
-  
-  Pose() : name(), received(), data() {}
-  Pose(std::string n, bool r) : name(n), received(r), data() {}
-};
+  ros::Subscriber pose_sub;
+  ros::Subscriber map_sub;
 
-struct Map {
-  std::string name;
-  bool received;
-  nav_msgs::OccupancyGrid data;
-  
-  Map() : name(), received(), data() {}
-  Map(std::string n, bool r) : name(n), received(r), data() {}
+  PosedMap() : updated(false) {}
 };
 
 class MapMerging {
@@ -72,49 +67,32 @@ private:
   
   /*** ROS parameters ***/
   double merging_rate_;
-  int max_number_robots_;
-  double max_comm_distance_;
   std::string pose_topic_, map_topic_;
   
   /*** ROS publishers ***/
-  bool *map_has_been_merged_;
   nav_msgs::OccupancyGrid merged_map_;
   ros::Publisher merged_map_publisher_;
   
   /*** ROS subsribers ***/
-  std::vector<Pose> poses_;
-  std::vector<ros::Subscriber> pose_subsribers_;
-  std::vector<Map> maps_;
-  std::vector<ros::Subscriber> map_subsribers_;
-  //boost::mutex pose_mutex_, map_mutex_;
+  std::unordered_map<std::string, PosedMap*> robots_;
+  std::forward_list<PosedMap> maps_;
   
-  std::string my_name_, tm_name_;
-  int my_id_, tm_id_;
-  
-  bool poseFound(std::string name, std::vector<Pose> &poses);
-  bool mapFound(std::string name, std::vector<Map> &maps);
-  
-  std::string robotNameParsing(std::string s);
-  bool getInitPose(std::string name, geometry_msgs::Pose &pose);
-  bool getRelativePose(std::string n, std::string m, geometry_msgs::Pose &delta, double resolution);
-  double distBetween(geometry_msgs::Point &p, geometry_msgs::Point &q);
-  
-  /*** Map merging algorithms ***/
-  void greedyMerging(int delta_x, int delta_y, int map_id);
+  std::string robotNameFromTopic(const std::string& topic);
+  bool isPoseTopic(const ros::master::TopicInfo& topic);
+  bool getInitPose(const std::string& name, geometry_msgs::Pose& pose);
+
+  /* callbacks */
+  void poseCallback(const geometry_msgs::PoseStamped::ConstPtr &msg, PosedMap *map);
+  void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr &msg, PosedMap *map);
   
 public:
   MapMerging();
-  ~MapMerging();
   
   void spin();
   void execute();
   
   void topicSubscribing();
-  void handShaking();
   void mapMerging();
-  
-  void poseCallback(const geometry_msgs::PoseStamped::ConstPtr &msg, int id);
-  void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr &msg, int id);
 };
 
-#endif /* !_MAP_MERGING_HPP */
+#endif /* MAP_MERGE_H_ */
