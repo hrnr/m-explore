@@ -41,6 +41,7 @@
 
 #include <ros/console.h>
 #include <occupancy_grid_utils/combine_grids.h>
+#include <tf/transform_datatypes.h>
 
 #include <boost/thread.hpp>
 #include <boost/bind.hpp>
@@ -167,9 +168,13 @@ void MapMerging::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr &msg, Posed
 
   ROS_DEBUG("Adjusting origin");
   // compute global position
-  ROS_DEBUG("origin %f %f", map->map.info.origin.position.x, map->map.info.origin.position.y);
+  ROS_DEBUG("origin %f %f, (%f, %f, %f, %f)", map->map.info.origin.position.x, 
+    map->map.info.origin.position.y, map->map.info.origin.orientation.x, map->map.info.origin.orientation.y,
+    map->map.info.origin.orientation.z, map->map.info.origin.orientation.w);
   map->map.info.origin += map->initial_pose;
-  ROS_DEBUG("origin %f %f", map->map.info.origin.position.x, map->map.info.origin.position.y);
+  ROS_DEBUG("origin %f %f, (%f, %f, %f, %f)", map->map.info.origin.position.x, 
+    map->map.info.origin.position.y, map->map.info.origin.orientation.x, map->map.info.origin.orientation.y,
+    map->map.info.origin.orientation.z, map->map.info.origin.orientation.w);
 }
 
 /*********************
@@ -185,15 +190,21 @@ bool has_suffix(const std::string& str, const std::string& suffix) {
 }
 
 geometry_msgs::Pose& operator+=(geometry_msgs::Pose& p1, const geometry_msgs::Pose& p2) {
+  // we try to do minimal amount of conversions between MSG and TF datatypes
   p1.position.x += p2.position.x;
   p1.position.y += p2.position.y;
   p1.position.z += p2.position.z;
 
-  // TODO : orientation
-  // p1.orientation.x += p2.orientation.x;
-  // p1.orientation.y += p2.orientation.y;
-  // p1.orientation.z += p2.orientation.z;
-  // p1.orientation.w += p2.orientation.w;
+  // we must transform both orientations to TF quaternions to have *= operator
+  tf::Quaternion tf_orientation1;
+  tf::quaternionMsgToTF(p1.orientation, tf_orientation1);
+  tf::Quaternion tf_orientation2;
+  tf::quaternionMsgToTF(p2.orientation, tf_orientation2);
+
+  tf_orientation1 *= tf_orientation2;
+
+  // and then trasform it back
+  tf::quaternionTFToMsg(tf_orientation1, p1.orientation);
   
   return p1;
 }
@@ -205,13 +216,19 @@ bool MapMerging::isPoseTopic(const ros::master::TopicInfo& topic) {
 
 /*
  * Get robot's initial position
- * TODO: get orientation
  */
 bool MapMerging::getInitPose(const std::string& name, geometry_msgs::Pose& pose) {
   std::string merging_namespace = ros::names::append(name, "map_merging");
-  return ros::param::get(ros::names::append(merging_namespace, "init_pose_x"), pose.position.x) &&
+  double yaw;
+
+  bool success = ros::param::get(ros::names::append(merging_namespace, "init_pose_x"), pose.position.x) &&
     ros::param::get(ros::names::append(merging_namespace, "init_pose_y"), pose.position.y) &&
-    ros::param::get(ros::names::append(merging_namespace, "init_pose_z"), pose.position.z);
+    ros::param::get(ros::names::append(merging_namespace, "init_pose_z"), pose.position.z) &&
+    ros::param::get(ros::names::append(merging_namespace, "init_pose_yaw"), yaw);
+
+  pose.orientation = tf::createQuaternionMsgFromYaw(yaw);
+
+  return success;
 }
 
 /*
