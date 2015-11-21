@@ -99,7 +99,7 @@ void Costmap2DClient::updateFullMap(const nav_msgs::OccupancyGrid::ConstPtr& msg
 
   // lock as we are accessing raw underlying map
   auto *mutex = costmap_.getMutex();
-  std::lock_guard<decltype(*mutex)> lock(*mutex);
+  std::lock_guard<costmap_2d::Costmap2D::mutex_t> lock(*mutex);
 
   // fill map with data
   unsigned char* costmap_data = costmap_.getCharMap();
@@ -131,7 +131,7 @@ void Costmap2DClient::updatePartialMap(const map_msgs::OccupancyGridUpdate::Cons
 
   // lock as we are accessing raw underlying map
   auto *mutex = costmap_.getMutex();
-  std::lock_guard<decltype(*mutex)> lock(*mutex);
+  std::lock_guard<costmap_2d::Costmap2D::mutex_t> lock(*mutex);
 
   size_t costmap_xn = costmap_.getSizeInCellsX();
   size_t costmap_yn = costmap_.getSizeInCellsY();

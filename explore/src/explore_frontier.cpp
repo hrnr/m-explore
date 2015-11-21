@@ -38,6 +38,7 @@
 #include <explore/explore_frontier.h>
 
 #include <exception>
+#include <mutex>
 #include <boost/thread.hpp>
 
 namespace explore {
@@ -176,8 +177,8 @@ void ExploreFrontier::findFrontiers() {
   map_.info.origin.position.y = costmap_->getOriginY();
 
   // lock as we are accessing raw underlying map
-  auto *mutex = costmap_->getLock();
-  boost::shared_lock<boost::shared_mutex> lock(*mutex);
+  auto *mutex = costmap_->getMutex();
+  std::unique_lock<costmap_2d::Costmap2D::mutex_t> lock(*mutex);
 
   // Find all frontiers (open cells next to unknown cells).
   const unsigned char* map = costmap_->getCharMap();
