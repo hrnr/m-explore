@@ -1,0 +1,81 @@
+# quickstart guide
+# if you want to get this this stack just running you are at right place
+
+# this setup has been used for experiments (VREP simulator, p3dx* packages and this stack)
+# I used base ubuntu server 15.04 + few utils tmux, htop, zsh
+# you using zsh with grml zsh config as my shell
+# this file may be used as script but use it at your own risk, you may want to customize
+
+# ROS setup (skip if you have ROS installed)
+
+# install ros according to guide for ros
+sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
+sudo apt-key adv --keyserver hkp://pool.sks-keyservers.net --recv-key 0xB01FA116
+sudo aptitude update
+sudo aptitude install ros-jade-desktop-full
+sudo rosdep init
+rosdep update
+
+# initialize ros workspace somewhere
+mkdir -p ros-ws/src
+cd ros-ws/src
+catkin_init_workspace
+
+# source ros scripts to your favourite shell (both from ros install and workspace)
+# something like:
+#[ -r /opt/ros/jade/setup.zsh ] && . /opt/ros/jade/setup.zsh
+#[ -r ~/ros-ws/devel/setup.zsh ] && . ~/ros-ws/devel/setup.zsh
+vim ~/.zshrc.local
+
+# ROS setup ends
+
+#setup my packages
+
+# clone all my packages to catkin workspace
+git clone https://github.com/hrnr/robo-rescue.git
+git clone https://github.com/hrnr/m-explore.git
+# this is not ros upstream package
+git clone https://github.com/hrnr/occupancy_grid_utils.git
+cd occupancy_grid_utils
+git checkout my-devel
+# this is for navfn, it will be not necessary when my PR will be merged upstream
+# clone it somewhere else and link only navfn, rest of navigation stack will be used from ros ditribution
+mkdir ~/ros-src
+cd ~/ros-src
+git clone https://github.com/hrnr/navigation.git
+cd ~/ros-ws/src
+ln -s ../../ros-src/navigation/navfn
+
+# download vrep
+mkdir ~/vrep
+cd ~/vrep
+wget http://coppeliarobotics.com/V-REP_PRO_EDU_V3_2_2_64_Linux.tar.gz
+tar xzf V-REP_PRO_EDU_V3_2_2_64_Linux.tar.gz
+
+# install dependencies for catkin packages
+# add vrep_common to catkin ws. needed for building p3dx_hal_vrep
+cd ~/ros-ws/src
+ln -s ~/vrep/V-REP_PRO_EDU_V3_2_2_64_Linux/programming/ros_packages/vrep_common
+cd ~/ros-ws
+# this will fail, we just need to get rosdep recognize packages in ws
+catkin_make
+source ~/.zshrc.local
+# use rosdep to install resolvable deps
+rosdep install occupancy_grid_utils
+rosdep install navfn
+rosdep install explore
+
+# now you can make all packages
+catkin_make
+
+#install runtime dependencies for p3dx_robot
+sudo aptitude install ros-jade-hector-mapping ros-jade-robot-localization ros-jade-move-base
+
+# additional setup for vrep
+# to run vrep without X
+sudo aptitude install xvfb
+
+#you can run vrep with that like:
+cd vrep/V-REP_PRO_EDU_V3_2_2_64_Linux
+xvfb-run --auto-servernum --server-num=1 -s "-screen 0 640x480x24" ./vrep.sh -h -s -q ~/scenes/demo-scene.ttt
+
