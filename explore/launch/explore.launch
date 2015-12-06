@@ -9,7 +9,7 @@
     <param name="close_loops" value="false"/>
     <param name="costmap_topic" value="move_base/global_costmap/costmap"/>
     <param name="costmap_updates_topic" value="move_base/global_costmap/costmap_updates"/>
-    <param name="footprint_topic" value="move_base/global_costmap/obstacle_layer_footprint/footprint_stamped"/>
+    <param name="footprint_topic" value="move_base/global_costmap/footprint"/>
     <param name="visualize" value="true"/>
   </node>
 </group>
