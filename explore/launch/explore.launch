@@ -7,8 +7,8 @@
     <param name="orientation_scale" value="0.0"/>
     <param name="gain_scale" value="1.0"/>
     <param name="close_loops" value="false"/>
-    <param name="costmap_topic" value="move_base/global_costmap/costmap"/>
-    <param name="costmap_updates_topic" value="move_base/global_costmap/costmap_updates"/>
+    <param name="costmap_topic" value="map"/>
+    <param name="costmap_updates_topic" value="map_updates"/>
     <param name="footprint_topic" value="move_base/global_costmap/footprint"/>
     <param name="visualize" value="true"/>
   </node>
