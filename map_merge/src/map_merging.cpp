@@ -117,8 +117,8 @@ void MapMerging::topicSubscribing() {
  * mapMerging()
  */
 void MapMerging::mapMerging() {
-  std::vector<const nav_msgs::OccupancyGrid*> maps_ptrs;
-  maps_ptrs.reserve(robots_.size());
+  std::vector<std::reference_wrapper<nav_msgs::OccupancyGrid>> maps_merged;
+  maps_merged.reserve(robots_.size());
   for (auto& p_map : maps_) {
     ROS_DEBUG("Merging map at [%p]", &p_map);
     std::lock_guard<std::mutex> lock(p_map.mutex);
@@ -128,17 +128,17 @@ void MapMerging::mapMerging() {
       continue;
     }
 
-    maps_ptrs.push_back(&p_map.map);
+    maps_merged.emplace_back(p_map.map);
 
     // TODO: do not merge maps which has not been updated
     p_map.updated = false;
   }
 
-  if (maps_ptrs.empty()) {
+  if (maps_merged.empty()) {
     return;
   }
 
-  occupancy_grid_utils::combineGrids(maps_ptrs, merged_map_);
+  occupancy_grid_utils::combineGrids(maps_merged.cbegin(), maps_merged.cend(), merged_map_);
 
   ROS_DEBUG("all maps merged, publishing");
   ros::Time now = ros::Time::now();
