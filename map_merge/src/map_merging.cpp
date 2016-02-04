@@ -190,21 +190,12 @@ bool has_suffix(const std::string& str, const std::string& suffix) {
 }
 
 geometry_msgs::Pose& operator+=(geometry_msgs::Pose& p1, const geometry_msgs::Pose& p2) {
-  // we try to do minimal amount of conversions between MSG and TF datatypes
-  p1.position.x += p2.position.x;
-  p1.position.y += p2.position.y;
-  p1.position.z += p2.position.z;
+  tf::Pose tf_p1, tf_p2;
+  tf::poseMsgToTF(p1, tf_p1);
+  tf::poseMsgToTF(p2, tf_p2);
 
-  // we must transform both orientations to TF quaternions to have *= operator
-  tf::Quaternion tf_orientation1;
-  tf::quaternionMsgToTF(p1.orientation, tf_orientation1);
-  tf::Quaternion tf_orientation2;
-  tf::quaternionMsgToTF(p2.orientation, tf_orientation2);
-
-  tf_orientation1 *= tf_orientation2;
-
-  // and then trasform it back
-  tf::quaternionTFToMsg(tf_orientation1, p1.orientation);
+  tf_p1 *= tf_p2;
+  tf::poseTFToMsg(tf_p1, p1);
   
   return p1;
 }
