@@ -210,7 +210,7 @@ bool MapMerging::isPoseTopic(const ros::master::TopicInfo& topic) {
  */
 bool MapMerging::getInitPose(const std::string& name, geometry_msgs::Pose& pose) {
   std::string merging_namespace = ros::names::append(name, "map_merging");
-  double yaw;
+  double yaw = 0.0;
 
   bool success = ros::param::get(ros::names::append(merging_namespace, "init_pose_x"), pose.position.x) &&
     ros::param::get(ros::names::append(merging_namespace, "init_pose_y"), pose.position.y) &&
