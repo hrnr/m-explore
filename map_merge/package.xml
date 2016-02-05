@@ -1,8 +1,10 @@
 <?xml version="1.0"?>
 <package>
-  <name>map_merge</name>
+  <name>multirobot_map_merge</name>
   <version>0.0.0</version>
-  <description>merging multiple maps with knowledge of the initial relative positions of robots</description>
+
+  <description>Merging multiple maps with knowledge of the initial relative
+  positions of robots.</description>
 
   <author email="laeqten@gmail.com">Jiri Horner</author>
   <author>Zhi Yan</author>
