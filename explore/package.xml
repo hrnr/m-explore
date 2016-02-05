@@ -1,8 +1,9 @@
 <?xml version="1.0"?>
 <package>
-  <name>explore</name>
+  <name>explore_lite</name>
   <version>0.0.0</version>
-  <description>frontier based exploration</description>
+
+  <description>Lightweight frontier-based exploration.</description>
 
   <author email="laeqten@gmail.com">Jiri Horner</author>
   <author>Charles DuHadway</author>

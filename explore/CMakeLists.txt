@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(explore)
+project(explore_lite)
 
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS
@@ -23,16 +23,12 @@ find_package(Boost REQUIRED COMPONENTS thread)
 ################################################
 ## Declare ROS messages, services and actions ##
 ################################################
+# we don't have any
 
 ###################################
 ## catkin specific configuration ##
 ###################################
-catkin_package(
-  INCLUDE_DIRS include
-#  LIBRARIES p3dx_dpl
-#  CATKIN_DEPENDS tf
-#  DEPENDS system_lib
-)
+catkin_package()
 
 ###########
 ## Build ##
