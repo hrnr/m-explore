@@ -49,16 +49,13 @@ include_directories(
   include
 )
 
-add_library(explore_lib
+add_executable(explore
   src/explore_frontier.cpp
   src/loop_closure.cpp
-  src/costmap_client.cpp)
-set_target_properties(explore_lib
-                      PROPERTIES OUTPUT_NAME "explore")
-
-add_executable(explore src/explore.cpp)
+  src/costmap_client.cpp
+  src/explore.cpp
+  )
 target_link_libraries(explore ${catkin_LIBRARIES})
-target_link_libraries(explore explore_lib)
 
 #############
 ## Install ##
