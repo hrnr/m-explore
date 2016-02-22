@@ -87,7 +87,6 @@ private:
   ros::NodeHandle private_nh_;
   ros::NodeHandle relative_nh_;
   ros::Publisher marker_array_publisher_;
-  ros::Publisher map_publisher_;
   tf::TransformListener tf_listener_;
 
   Costmap2DClient costmap_client_;
