@@ -71,8 +71,6 @@ Explore::Explore() :
   private_nh_.param("orientation_scale", orientation_scale_, 0.0); // TODO: set this back to 0.318 once getOrientationChange is fixed
   private_nh_.param("gain_scale", gain_scale_, 1.0);
 
-  // TODO is this necessary?
-  // costmap_client_->clearRobotFootprint();
   loop_closure_ = std::unique_ptr<LoopClosure>(new LoopClosure( 
     loop_closure_addition_dist_min,
     loop_closure_loop_dist_min,
@@ -96,8 +94,6 @@ void Explore::makePlan() {
   costmap_client_.getRobotPose(robot_pose);
 
   std::vector<geometry_msgs::Pose> goals;
-  // TODO is this necessary?
-  // costmap_client_->clearRobotFootprint();
 
   explorer_.getExplorationGoals(robot_pose, goals, potential_scale_, orientation_scale_, gain_scale_);
   if (goals.size() == 0) {
