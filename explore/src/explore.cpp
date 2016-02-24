@@ -53,8 +53,6 @@ Explore::Explore() :
   prev_plan_size_(0),
   done_exploring_(false)
 {
-  marker_array_publisher_ = private_nh_.advertise<visualization_msgs::MarkerArray>("frontiers", 10);
-
   private_nh_.param("planner_frequency", planner_frequency_, 1.0);
   private_nh_.param("progress_timeout", progress_timeout_, 30.0);
   private_nh_.param("visualize", visualize_, false);
@@ -80,6 +78,10 @@ Explore::Explore() :
     move_base_client_,
     costmap_client_
   ));
+
+  if(visualize_) {
+    marker_array_publisher_ = private_nh_.advertise<visualization_msgs::MarkerArray>("frontiers", 10);
+  }
 }
 
 void Explore::publishFrontiers() {
