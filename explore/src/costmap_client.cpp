@@ -53,14 +53,12 @@ Costmap2DClient::Costmap2DClient(ros::NodeHandle& param_nh, ros::NodeHandle& sub
   std::string tf_prefix = tf::getPrefixParam(param_nh);
 
   // get two frames
-  param_nh.param("global_frame", global_frame_, std::string("map"));
   param_nh.param("robot_base_frame", robot_base_frame_, std::string("base_link"));
 
   // transform tolerance is used for all tf transforms here
   param_nh.param("transform_tolerance", transform_tolerance_, 0.3);
 
   // make sure that we set the frames appropriately based on the tf_prefix
-  global_frame_ = tf::resolve(tf_prefix, global_frame_);
   robot_base_frame_ = tf::resolve(tf_prefix, robot_base_frame_);
 
   ros::Time last_error = ros::Time::now();
