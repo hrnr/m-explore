@@ -7,12 +7,14 @@
   positions of robots.</description>
 
   <author email="laeqten@gmail.com">Jiri Horner</author>
-  <author>Zhi Yan</author>
   <maintainer email="laeqten@gmail.com">Jiri Horner</maintainer>
   <license>BSD</license>
+  <url>http://wiki.ros.org/multirobot_map_merge</url>
 
-  <!-- original project URI -->
-  <!-- <url>http://www.ai.univ-paris8.fr/~yz/</url> -->
+  <!-- acknowledgements
+  <author>Zhi Yan</author>
+  <url>http://www.ai.univ-paris8.fr/~yz/</url>
+  -->
   <buildtool_depend>catkin</buildtool_depend>
 
   <build_depend>roscpp</build_depend>

@@ -6,12 +6,14 @@
   <description>Lightweight frontier-based exploration.</description>
 
   <author email="laeqten@gmail.com">Jiri Horner</author>
-  <author>Charles DuHadway</author>
   <maintainer email="laeqten@gmail.com">Jiri Horner</maintainer>
   <license>BSD</license>
+  <url>http://wiki.ros.org/explore_lite</url>
 
-  <!-- original project URI -->
-  <!-- <url>http://ros.org/wiki/explore</url> -->
+  <!-- acknowledgements
+  <author>Charles DuHadway</author>
+  <url>http://ros.org/wiki/explore</url>
+  -->
   <buildtool_depend>catkin</buildtool_depend>
 
   <build_depend>roscpp</build_depend>
