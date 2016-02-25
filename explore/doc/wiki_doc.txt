@@ -33,7 +33,7 @@ pub {
 sub {
   0.name = costmap
   0.type = nav_msgs/OccupancyGrid
-  0.desc = Map which will be used for exploration planning. Can be either cost from [[move_base]] or map created by SLAM (see above).
+  0.desc = Map which will be used for exploration planning. Can be either cost from [[move_base]] or map created by SLAM (see above). Occupancy grid must have got properly marked unknown space, mapping algorithms usually track unknown space by default. If you want to use costmap provided by [[move_base]] you need to enable unknown space tracking by setting `track_unknown_space: true`.
 
   1.name = costmap_updates
   1.type = map_msgs/OccupancyGridUpdate
