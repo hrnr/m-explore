@@ -42,7 +42,7 @@ include_directories(
   include
 )
 
-add_executable(map_merge src/map_merging.cpp)
+add_executable(map_merge src/map_merge.cpp)
 target_link_libraries(map_merge ${catkin_LIBRARIES})
 
 #############

@@ -35,7 +35,7 @@
  *
  *********************************************************************/
 
-#include "../include/map_merging.hpp"
+#include "../include/map_merge.h"
 
 #include <functional>
 
