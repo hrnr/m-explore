@@ -54,7 +54,6 @@ MapMerging::MapMerging() {
   std::string frame_id;
 
   private_nh.param("merging_rate", merging_rate_, 4.0);
-  private_nh.param<std::string>("pose_topic", pose_topic_, "pose");
   private_nh.param<std::string>("map_topic", map_topic_, "map");
   private_nh.param<std::string>("world_frame", frame_id, "world");
 
@@ -91,14 +90,6 @@ void MapMerging::topicSubscribing() {
         PosedMap *map = &maps_.front();
         robots_.insert({ robot_name, map });
         map->initial_pose = init_pose;
-
-        std::string pose_topic = ros::names::append(robot_name, pose_topic_);
-        ROS_INFO("Subscribing to POSE topic: %s.", pose_topic.c_str());
-        map->pose_sub = node_.subscribe<geometry_msgs::PoseStamped>(
-          pose_topic,
-          50,
-          std::bind(&MapMerging::poseCallback, this, std::placeholders::_1, map)
-        );
 
         std::string map_topic = ros::names::append(robot_name, map_topic_);
         ROS_INFO("Subscribing to MAP topic: %s.", map_topic.c_str());
@@ -144,17 +135,6 @@ void MapMerging::mapMerging() {
   merged_map_.info.map_load_time = now;
   merged_map_.header.stamp = now;
   merged_map_publisher_.publish(merged_map_);
-}
-
-/*********************
- * callback functions *
- *********************/
-void MapMerging::poseCallback(const geometry_msgs::PoseStamped::ConstPtr &msg, PosedMap *map) {
-  ROS_DEBUG("poseCallback");
-  std::lock_guard<std::mutex> lock(map->mutex);
-
-  map->updated = true;
-  map->pose = *msg;
 }
 
 void MapMerging::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr &msg, PosedMap *map) {

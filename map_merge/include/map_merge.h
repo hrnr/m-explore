@@ -52,10 +52,8 @@ struct PosedMap {
   bool updated;
 
   geometry_msgs::Pose initial_pose;
-  geometry_msgs::PoseStamped pose;
   nav_msgs::OccupancyGrid map;
 
-  ros::Subscriber pose_sub;
   ros::Subscriber map_sub;
 
   PosedMap() : updated(false) {}
@@ -67,13 +65,12 @@ private:
   
   /*** ROS parameters ***/
   double merging_rate_;
-  std::string pose_topic_, map_topic_;
+  std::string map_topic_;
   
   /*** ROS publishers ***/
   nav_msgs::OccupancyGrid merged_map_;
   ros::Publisher merged_map_publisher_;
   
-  /*** ROS subsribers ***/
   std::unordered_map<std::string, PosedMap*> robots_;
   std::forward_list<PosedMap> maps_;
   
@@ -81,8 +78,6 @@ private:
   bool isRobotMapTopic(const ros::master::TopicInfo& topic);
   bool getInitPose(const std::string& name, geometry_msgs::Pose& pose);
 
-  /* callbacks */
-  void poseCallback(const geometry_msgs::PoseStamped::ConstPtr &msg, PosedMap *map);
   void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr &msg, PosedMap *map);
   
 public:
