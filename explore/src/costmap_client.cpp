@@ -52,10 +52,19 @@ Costmap2DClient::Costmap2DClient(ros::NodeHandle& param_nh, ros::NodeHandle& sub
   const tf::TransformListener* tf) :
     tf_(tf)
 {
-  /* initialize costmap */
   std::string costmap_topic;
+  std::string footprint_topic;
+  std::string costmap_updates_topic;
+  bool static_footprint;
   param_nh.param("costmap_topic", costmap_topic, std::string("costmap"));
+  param_nh.param("footprint_topic", footprint_topic, std::string("footprint_stamped"));
+  param_nh.param("costmap_updates_topic", costmap_updates_topic, std::string("costmap_updates"));
+  param_nh.param("static_footprint", static_footprint, false);
+  param_nh.param("robot_base_frame", robot_base_frame_, std::string("base_link"));
+  // transform tolerance is used for all tf transforms here
+  param_nh.param("transform_tolerance", transform_tolerance_, 0.3);
 
+  /* initialize costmap */
   boost::function<void(const nav_msgs::OccupancyGrid::ConstPtr&)> costmap_cb =
     std::bind(&Costmap2DClient::updateFullMap, this, std::placeholders::_1);
   costmap_sub_ = subscription_nh.subscribe(costmap_topic, 1000, costmap_cb);
@@ -65,41 +74,31 @@ Costmap2DClient::Costmap2DClient(ros::NodeHandle& param_nh, ros::NodeHandle& sub
   updateFullMap(costmap_msg);
 
   /* initialize footprint */
-  std::string footprint_topic;
-  param_nh.param("footprint_topic", footprint_topic, std::string("footprint_stamped"));
-
-  boost::function<void(const geometry_msgs::PolygonStamped::ConstPtr&)> footprint_cb =
-    std::bind(&Costmap2DClient::updateFootPrint, this, std::placeholders::_1);
-  // TODO static footprint options
-  footprint_sub_ = subscription_nh.subscribe(footprint_topic, 1000, footprint_cb);
   ROS_INFO("Waiting for footprint to become available, topic: %s",
       footprint_topic.c_str());
   auto footprint_msg = ros::topic::waitForMessage<geometry_msgs::PolygonStamped>(footprint_topic, subscription_nh);
   updateFootPrint(footprint_msg);
 
-  /* subscribe to map updates */
-  std::string costmap_updates_topic;
-  param_nh.param("costmap_updates_topic", costmap_updates_topic, std::string("costmap_updates"));
+  /* subscribe to footprint updates if it is necessary for robot */
+  if(!static_footprint) {
+    boost::function<void(const geometry_msgs::PolygonStamped::ConstPtr&)> footprint_cb =
+      std::bind(&Costmap2DClient::updateFootPrint, this, std::placeholders::_1);
+    footprint_sub_ = subscription_nh.subscribe(footprint_topic, 1000, footprint_cb);
+  }
 
+  /* subscribe to map updates */
   boost::function<void(const map_msgs::OccupancyGridUpdate::ConstPtr&)> costmap_updates_cb =
     std::bind(&Costmap2DClient::updatePartialMap, this, std::placeholders::_1);
   costmap_updates_sub_ = subscription_nh.subscribe(costmap_updates_topic, 1000, costmap_updates_cb);
 
-  /* tf transform necessary for getRobotPose */
+  /* resolve tf prefix for robot_base_frame */
   std::string tf_prefix = tf::getPrefixParam(param_nh);
-
-  // get two frames
-  param_nh.param("robot_base_frame", robot_base_frame_, std::string("base_link"));
-
-  // transform tolerance is used for all tf transforms here
-  param_nh.param("transform_tolerance", transform_tolerance_, 0.3);
-
-  // make sure that we set the frames appropriately based on the tf_prefix
   robot_base_frame_ = tf::resolve(tf_prefix, robot_base_frame_);
 
+  // we need to make sure that the transform between the robot base frame and the global frame is available
+  /* tf transform is necessary for getRobotPose */
   ros::Time last_error = ros::Time::now();
   std::string tf_error;
-  // we need to make sure that the transform between the robot base frame and the global frame is available
   while (ros::ok()
       && !tf_->waitForTransform(global_frame_, robot_base_frame_, ros::Time(), ros::Duration(0.1), ros::Duration(0.01),
                                &tf_error))

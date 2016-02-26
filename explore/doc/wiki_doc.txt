@@ -45,10 +45,10 @@ sub {
 }
 
 param {
-  0.name = ~visualize
-  0.default = `false`
-  0.type = bool
-  0.desc = Specifies whether or not publish visualized frontiers.
+  0.name = ~robot_base_frame
+  0.default = `base_link`
+  0.type = string
+  0.desc = The name of the base frame of the robot. This is used for determining robot position on map. Mandatory.
 
   1.name = ~costmap_topic
   1.default = `costmap`
@@ -65,41 +65,51 @@ param {
   3.type = string
   3.desc = Specifies topic of source <<MsgLink(map_msgs/OccupancyGridUpdate)>>. Not necessary if source of map is always publishing full updates, i.e. does not provide this topic.
 
-  4.name = ~planner_frequency
-  4.default = `1.0`
-  4.type = double
-  4.desc = Rate in Hz at which new frontiers will computed and goal reconsidered.
+  4.name = ~visualize
+  4.default = `false`
+  4.type = bool
+  4.desc = Specifies whether or not publish visualized frontiers.
 
-  5.name = ~progress_timeout
-  5.default = `30.0`
-  5.type = double
-  5.desc = Time in seconds. When robot do not make any progress for `progress_timeout`, current goal will be abandoned.
+  5.name = ~static_footprint
+  5.default = `false`
+  5.type = bool
+  5.desc = Specifies whether or not robot footprint is static over time. If robot footprint will not change, set this parameter to `true` to save some CPU cycles. If you are not sure, setting to `false` will always work.
 
-  6.name = ~potential_scale
-  6.default = `1e-3`
+  6.name = ~planner_frequency
+  6.default = `1.0`
   6.type = double
-  6.desc = Used for weighting frontiers. This multiplicative parameter affects frontier potential component of the frontier weight.
+  6.desc = Rate in Hz at which new frontiers will computed and goal reconsidered.
 
-  7.name = ~orientation_scale
-  7.default = `0`
+  7.name = ~progress_timeout
+  7.default = `30.0`
   7.type = double
-  7.desc = Used for weighting frontiers. This multiplicative parameter affects frontier orientation component of the frontier weight.
+  7.desc = Time in seconds. When robot do not make any progress for `progress_timeout`, current goal will be abandoned.
 
-  8.name = ~gain_scale
-  8.default = `1.0`
+  8.name = ~potential_scale
+  8.default = `1e-3`
   8.type = double
-  8.desc = Used for weighting frontiers. This multiplicative parameter affects frontier gain component of the frontier weight.
+  8.desc = Used for weighting frontiers. This multiplicative parameter affects frontier potential component of the frontier weight.
 
-  9.name = ~transform_tolerance
-  9.default = `0.3`
+  9.name = ~orientation_scale
+  9.default = `0`
   9.type = double
-  9.desc = Transform tolerance to use when transforming robot pose.
+  9.desc = Used for weighting frontiers. This multiplicative parameter affects frontier orientation component of the frontier weight.
+
+  10.name = ~gain_scale
+  10.default = `1.0`
+  10.type = double
+  10.desc = Used for weighting frontiers. This multiplicative parameter affects frontier gain component of the frontier weight.
+
+  11.name = ~transform_tolerance
+  11.default = `0.3`
+  11.type = double
+  11.desc = Transform tolerance to use when transforming robot pose.
 }
 
 req_tf {
   0.from = global_frame
   0.to = robot_base_frame
-  0.desc = This transformation is usually provided by mapping algorithm. Those frames are usually called `map` and `base_link`.
+  0.desc = This transformation is usually provided by mapping algorithm. Those frames are usually called `map` and `base_link`. For adjusting `robot_base_frame` name see respective parameter. You don't need to set `global_frame`. The name for `global_frame` will be sourced from `costmap_topic` automatically.
 }
 
 act_called {
