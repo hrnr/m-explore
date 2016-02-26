@@ -109,8 +109,9 @@ void MapMerging::topicSubscribing() {
 void MapMerging::mapMerging() {
   std::vector<std::reference_wrapper<nav_msgs::OccupancyGrid>> maps_merged;
   maps_merged.reserve(robots_.size());
+
+  ROS_DEBUG("Map merging started");
   for (auto& p_map : maps_) {
-    ROS_DEBUG("Merging map at [%p]", &p_map);
     std::lock_guard<std::mutex> lock(p_map.mutex);
 
     // map not yet received
@@ -135,7 +136,7 @@ void MapMerging::mapMerging() {
 }
 
 void MapMerging::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr &msg, PosedMap *map) {
-  ROS_DEBUG("mapCallback for map at [%p]", map);
+  ROS_DEBUG("mapCallback for map at [%p]", static_cast<void*>(map));
   std::lock_guard<std::mutex> lock(map->mutex);
 
   map->map = *msg;
