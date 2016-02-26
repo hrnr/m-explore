@@ -80,7 +80,7 @@ void MapMerging::topicSubscribing() {
         geometry_msgs::Pose init_pose;
         if(!getInitPose(robot_name, init_pose)) {
           ROS_WARN("couldn't get initial position for robot [%s]\n"
-            "did you defined parameters map_merging/init_pose_[xyz]? in robot namespace?",
+            "did you defined parameters map_merge/init_pose_[xyz]? in robot namespace?",
             robot_name.c_str());
           continue;
         }
@@ -183,7 +183,7 @@ bool MapMerging::isRobotMapTopic(const ros::master::TopicInfo& topic) {
  * Get robot's initial position
  */
 bool MapMerging::getInitPose(const std::string& name, geometry_msgs::Pose& pose) {
-  std::string merging_namespace = ros::names::append(name, "map_merging");
+  std::string merging_namespace = ros::names::append(name, "map_merge");
   double yaw = 0.0;
 
   bool success = ros::param::get(ros::names::append(merging_namespace, "init_pose_x"), pose.position.x) &&
@@ -219,7 +219,7 @@ void MapMerging::spin() {
 }
 
 int main(int argc, char **argv) {
-  ros::init(argc, argv, "map_merging");
+  ros::init(argc, argv, "map_merge");
   // this package is still in development -- start wil debugging enabled
   if(ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug) ) {
     ros::console::notifyLoggerLevelsChanged();
