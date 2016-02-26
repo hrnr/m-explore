@@ -49,14 +49,11 @@
 
 struct PosedMap {
   std::mutex mutex;
-  bool updated;
 
   geometry_msgs::Pose initial_pose;
   nav_msgs::OccupancyGrid map;
 
   ros::Subscriber map_sub;
-
-  PosedMap() : updated(false) {}
 };
 
 class MapMerging {

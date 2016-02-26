@@ -119,9 +119,6 @@ void MapMerging::mapMerging() {
     }
 
     maps_merged.emplace_back(p_map.map);
-
-    // TODO: do not merge maps which has not been updated
-    p_map.updated = false;
   }
 
   if (maps_merged.empty()) {
@@ -141,7 +138,6 @@ void MapMerging::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr &msg, Posed
   ROS_DEBUG("mapCallback for map at [%p]", map);
   std::lock_guard<std::mutex> lock(map->mutex);
 
-  map->updated = true;
   map->map = *msg;
 
   ROS_DEBUG("Adjusting origin");
