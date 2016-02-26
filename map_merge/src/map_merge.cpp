@@ -46,7 +46,6 @@
 #include <boost/thread.hpp>
 #include <boost/bind.hpp>
 
-bool has_suffix(const std::string &str, const std::string &suffix);
 geometry_msgs::Pose& operator+=(geometry_msgs::Pose&, const geometry_msgs::Pose&);
 
 MapMerging::MapMerging() {
@@ -73,9 +72,8 @@ void MapMerging::topicSubscribing() {
   ros::master::getTopics(topic_infos);
 
   for(const auto& topic : topic_infos) {
-    // we check only pose topic and expect map topic to exist relatively
-    // to pose topic for consistency
-    if(isPoseTopic(topic)) {
+    // we check only map topic
+    if(isRobotMapTopic(topic)) {
       std::string robot_name = robotNameFromTopic(topic.name);
 
       // if we don't know this robot yet
@@ -184,11 +182,6 @@ std::string MapMerging::robotNameFromTopic(const std::string& topic) {
   return ros::names::parentNamespace(topic);
 }
 
-bool has_suffix(const std::string& str, const std::string& suffix) {
-  return str.size() >= suffix.size() &&
-    str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
-}
-
 geometry_msgs::Pose& operator+=(geometry_msgs::Pose& p1, const geometry_msgs::Pose& p2) {
   tf::Pose tf_p1, tf_p2;
   tf::poseMsgToTF(p1, tf_p1);
@@ -201,8 +194,12 @@ geometry_msgs::Pose& operator+=(geometry_msgs::Pose& p1, const geometry_msgs::Po
 }
 
 /* identifies topic via suffix */
-bool MapMerging::isPoseTopic(const ros::master::TopicInfo& topic) {
-  return has_suffix(topic.name, pose_topic_);
+bool MapMerging::isRobotMapTopic(const ros::master::TopicInfo& topic) {
+  /* test whether topic ends with map_suffix */
+  std::string suffix = map_topic_;
+  bool has_suffix = topic.name.size() >= suffix.size() &&
+    topic.name.compare(topic.name.size() - suffix.size(), suffix.size(), suffix);
+  return has_suffix;
 }
 
 /*
@@ -246,6 +243,7 @@ void MapMerging::spin() {
 
 int main(int argc, char **argv) {
   ros::init(argc, argv, "map_merging");
+  // this package is still in development -- start wil debugging enabled
   if(ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug) ) {
     ros::console::notifyLoggerLevelsChanged();
   }

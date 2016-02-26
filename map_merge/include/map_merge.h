@@ -78,7 +78,7 @@ private:
   std::forward_list<PosedMap> maps_;
   
   std::string robotNameFromTopic(const std::string& topic);
-  bool isPoseTopic(const ros::master::TopicInfo& topic);
+  bool isRobotMapTopic(const ros::master::TopicInfo& topic);
   bool getInitPose(const std::string& name, geometry_msgs::Pose& pose);
 
   /* callbacks */
