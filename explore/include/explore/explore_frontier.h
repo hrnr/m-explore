@@ -42,9 +42,17 @@
 #include <geometry_msgs/Pose.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <tf/LinearMath/Vector3.h>
-#include <navfn/navfn_ros.h>
 
 #include <explore/costmap_client.h>
+
+/* I have been using modified version of navfn for a long time here.
+Unfornutely my changes are affecting ABI of the component, so the can't be
+accepted for ROS Jade or below. I expect them be accepted for ROS Karmic. Then
+this should be moved back to using standard ROS navfn `<navfn/navfn_ros.h>`.
+For the meanwhile, to allow seamless building, I will be using internal
+version included from ROS. */
+
+#include <explore/navfn_ros.h>
 
 namespace explore {
 
