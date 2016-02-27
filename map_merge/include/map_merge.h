@@ -62,7 +62,7 @@ private:
   
   /*** ROS parameters ***/
   double merging_rate_;
-  std::string map_topic_;
+  std::string robot_map_topic_;
   std::string robot_namespace_;
   
   /*** ROS publishers ***/

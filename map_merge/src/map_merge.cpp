@@ -54,7 +54,7 @@ MapMerging::MapMerging() {
   std::string merged_map_topic;
 
   private_nh.param("merging_rate", merging_rate_, 4.0);
-  private_nh.param<std::string>("robot_map_topic", map_topic_, "map");
+  private_nh.param<std::string>("robot_map_topic", robot_map_topic_, "map");
   private_nh.param<std::string>("robot_namespace", robot_namespace_, "");
   private_nh.param<std::string>("merged_map_topic", merged_map_topic, "map");
   private_nh.param<std::string>("world_frame", frame_id, "world");
@@ -101,7 +101,7 @@ void MapMerging::topicSubscribing() {
     robots_.insert({ robot_name, map });
     map->initial_pose = init_pose;
 
-    map_topic = ros::names::append(robot_name, map_topic_);
+    map_topic = ros::names::append(robot_name, robot_map_topic_);
     ROS_INFO("Subscribing to MAP topic: %s.", map_topic.c_str());
     map->map_sub = node_.subscribe<nav_msgs::OccupancyGrid>(
       map_topic,
@@ -180,8 +180,8 @@ geometry_msgs::Pose& operator+=(geometry_msgs::Pose& p1, const geometry_msgs::Po
 
 /* identifies topic via suffix */
 bool MapMerging::isRobotMapTopic(const ros::master::TopicInfo& topic) {
-  /* test whether topic ends with map_suffix */
-  std::string suffix = map_topic_;
+  /* test whether topic ends with robot_map_topic_ */
+  std::string suffix = robot_map_topic_;
   bool has_suffix = topic.name.size() >= suffix.size() &&
     topic.name.compare(topic.name.size() - suffix.size(), suffix.size(), suffix);
 
