@@ -38,13 +38,11 @@
 #include "../include/map_merge.h"
 
 #include <functional>
+#include <thread>
 
 #include <ros/console.h>
 #include <occupancy_grid_utils/combine_grids.h>
 #include <tf/transform_datatypes.h>
-
-#include <boost/thread.hpp>
-#include <boost/bind.hpp>
 
 geometry_msgs::Pose& operator+=(geometry_msgs::Pose&, const geometry_msgs::Pose&);
 
@@ -232,7 +230,7 @@ void MapMerging::execute() {
  */
 void MapMerging::spin() {
   ros::spinOnce();
-  boost::thread t(boost::bind(&MapMerging::execute, this));
+  std::thread t([this](){execute();});
   ros::spin();
   t.join();
 }
