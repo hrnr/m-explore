@@ -180,16 +180,22 @@ geometry_msgs::Pose& operator+=(geometry_msgs::Pose& p1, const geometry_msgs::Po
 
 /* identifies topic via suffix */
 bool MapMerging::isRobotMapTopic(const ros::master::TopicInfo& topic) {
-  /* test whether topic ends with robot_map_topic_ */
-  std::string suffix = robot_map_topic_;
-  bool has_suffix = topic.name.size() >= suffix.size() &&
-    topic.name.compare(topic.name.size() - suffix.size(), suffix.size(), suffix);
+  /* test whether topic is robot_map_topic_ */
+  std::string topic_namespace = ros::names::parentNamespace(topic.name);
+  bool is_map_topic = ros::names::append(topic_namespace, robot_map_topic_) == topic.name;
 
   /* test whether topic contains *anywhere* robot namespace */
   auto pos = topic.name.find(robot_namespace_);
   bool contains_robot_namespace = pos != std::string::npos;
 
-  return has_suffix && contains_robot_namespace;
+  /* we support only occupancy grids as maps */
+  bool is_occupancy_grid = topic.datatype == "nav_msgs/OccupancyGrid";
+
+  /* we don't want to subcribe on published merged map */
+  bool is_our_topic = merged_map_publisher_.getTopic() == topic.name;
+
+  return is_occupancy_grid && !is_our_topic &&
+    contains_robot_namespace && is_map_topic;
 }
 
 /*

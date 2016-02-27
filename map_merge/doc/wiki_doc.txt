@@ -65,12 +65,12 @@ param {
   4.name = ~robot_map_topic
   4.default = `map`
   4.type = string
-  4.desc = Suffix of robot map topic. Only topics with this suffix will be considered when looking for new maps to merge, but this topics may be subject to further filtering (see below). This should be preferably robot map topic name, but you are limited only by text matching. Therefore `robot_map_topic` can contain slashes etc.
+  4.desc = Name of robot map topic without namespaces (last component of topic name). Only topics with this name will be considered when looking for new maps to merge. This topics may be subject to further filtering (see below).
 
   5.name = ~robot_namespace
   5.default = `` (empty string)
   5.type = string
-  5.desc = Fixed part of robot map topic. You can employ this parameter to futher limit which topics will be considered during dynamic lookup for robots. Only topics which contain (anywhere) this string will be considered for lookup. As with `robot_map_topic` you are only limited by text filtering, so `robot_namespace` does not need to be ROS namespace, but can contain slashes etc. This must be common part of all robots map topics name (all robots for which you want to merge map).
+  5.desc = Fixed part of robot map topic. You can employ this parameter to further limit which topics will be considered during dynamic lookup for robots. Only topics which contain (anywhere) this string will be considered for lookup. Unlike `robot_map_topic` you are not limited by namespace logic. Topics will be filtered using text-based search. Therefore `robot_namespace` does not need to be ROS namespace, but can contain slashes etc. This must be common part of all robots map topics name (all robots for which you want to merge map).
 
   6.name = ~merged_map_topic
   6.default = `map`
