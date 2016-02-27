@@ -49,18 +49,20 @@
 geometry_msgs::Pose& operator+=(geometry_msgs::Pose&, const geometry_msgs::Pose&);
 
 MapMerging::MapMerging() {
-  ros::NodeHandle relative_nh;
   ros::NodeHandle private_nh("~");
   std::string frame_id;
+  std::string merged_map_topic;
 
   private_nh.param("merging_rate", merging_rate_, 4.0);
-  private_nh.param<std::string>("map_topic", map_topic_, "map");
+  private_nh.param<std::string>("robot_map_topic", map_topic_, "map");
+  private_nh.param<std::string>("robot_namespace", robot_namespace_, "");
+  private_nh.param<std::string>("merged_map_topic", merged_map_topic, "map");
   private_nh.param<std::string>("world_frame", frame_id, "world");
 
   merged_map_.header.frame_id = frame_id;
 
   /* publishing */
-  merged_map_publisher_ = relative_nh.advertise<nav_msgs::OccupancyGrid>("map", 50, true);
+  merged_map_publisher_ = node_.advertise<nav_msgs::OccupancyGrid>(merged_map_topic, 50, true);
 }
 
 /*
