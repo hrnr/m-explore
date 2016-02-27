@@ -178,7 +178,12 @@ bool MapMerging::isRobotMapTopic(const ros::master::TopicInfo& topic) {
   std::string suffix = map_topic_;
   bool has_suffix = topic.name.size() >= suffix.size() &&
     topic.name.compare(topic.name.size() - suffix.size(), suffix.size(), suffix);
-  return has_suffix;
+
+  /* test whether topic contains *anywhere* robot namespace */
+  auto pos = topic.name.find(robot_namespace_);
+  bool contains_robot_namespace = pos != std::string::npos;
+
+  return has_suffix && contains_robot_namespace;
 }
 
 /*
