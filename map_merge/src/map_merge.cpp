@@ -73,35 +73,41 @@ void MapMerging::topicSubscribing() {
   ros::master::getTopics(topic_infos);
 
   for(const auto& topic : topic_infos) {
+    geometry_msgs::Pose init_pose;
+    std::string robot_name;
+    std::string map_topic;
+
     // we check only map topic
-    if(isRobotMapTopic(topic)) {
-      std::string robot_name = robotNameFromTopic(topic.name);
-
-      // if we don't know this robot yet
-      if (!robots_.count(robot_name)) {
-        geometry_msgs::Pose init_pose;
-        if(!getInitPose(robot_name, init_pose)) {
-          ROS_WARN("couldn't get initial position for robot [%s]\n"
-            "did you defined parameters map_merge/init_pose_[xyz]? in robot namespace?",
-            robot_name.c_str());
-          continue;
-        }
-
-        ROS_INFO("adding robot [%s] to system", robot_name.c_str());
-        maps_.emplace_front();
-        PosedMap *map = &maps_.front();
-        robots_.insert({ robot_name, map });
-        map->initial_pose = init_pose;
-
-        std::string map_topic = ros::names::append(robot_name, map_topic_);
-        ROS_INFO("Subscribing to MAP topic: %s.", map_topic.c_str());
-        map->map_sub = node_.subscribe<nav_msgs::OccupancyGrid>(
-          map_topic,
-          50,
-          std::bind(&MapMerging::mapCallback, this, std::placeholders::_1, map)
-        );
-      }
+    if(!isRobotMapTopic(topic)) {
+      continue;
     }
+
+    robot_name = robotNameFromTopic(topic.name);
+    if (robots_.count(robot_name)) {
+      // we already know this robot
+      continue;
+    }
+
+    if(!getInitPose(robot_name, init_pose)) {
+      ROS_WARN("couldn't get initial position for robot [%s]\n"
+        "did you defined parameters map_merge/init_pose_[xyz]? in robot namespace?",
+        robot_name.c_str());
+      continue;
+    }
+
+    ROS_INFO("adding robot [%s] to system", robot_name.c_str());
+    maps_.emplace_front();
+    PosedMap *map = &maps_.front();
+    robots_.insert({ robot_name, map });
+    map->initial_pose = init_pose;
+
+    map_topic = ros::names::append(robot_name, map_topic_);
+    ROS_INFO("Subscribing to MAP topic: %s.", map_topic.c_str());
+    map->map_sub = node_.subscribe<nav_msgs::OccupancyGrid>(
+      map_topic,
+      50,
+      std::bind(&MapMerging::mapCallback, this, std::placeholders::_1, map)
+    );
   }
 }
 
