@@ -8,7 +8,6 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   tf
   roslaunch
-  occupancy_grid_utils
  )
 
 find_package(Boost REQUIRED COMPONENTS thread)
@@ -42,7 +41,11 @@ include_directories(
   include
 )
 
-add_executable(map_merge src/map_merge.cpp)
+add_executable(map_merge
+  src/map_merge.cpp
+  src/combine_grids.cpp
+  src/coordinate_conversions.cpp
+)
 target_link_libraries(map_merge ${catkin_LIBRARIES})
 
 #############
