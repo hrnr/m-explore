@@ -59,6 +59,15 @@ install(DIRECTORY launch/
 #############
 ## Testing ##
 #############
+if(CATKIN_ENABLE_TESTING)
+  catkin_add_gtest(combine_grid_tests
+    test/test_grid_utils.cpp
+    src/combine_grids.cpp
+    src/coordinate_conversions.cpp
+  )
+  target_link_libraries(combine_grid_tests ${catkin_LIBRARIES})
 
-# test all launch files
-roslaunch_add_file_check(launch)
+  # test all launch files
+  roslaunch_add_file_check(launch)
+endif()
+
