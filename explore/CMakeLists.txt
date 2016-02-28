@@ -69,6 +69,7 @@ install(DIRECTORY launch/
 #############
 ## Testing ##
 #############
-
-# test all launch files
-roslaunch_add_file_check(launch)
+if(CATKIN_ENABLE_TESTING)
+  # test all launch files
+  roslaunch_add_file_check(launch)
+endif()
