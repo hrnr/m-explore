@@ -86,7 +86,8 @@ void verifyDataSize (const nm::OccupancyGrid& g)
 {
   const size_t expected = g.info.height*g.info.width;
   if (expected!=g.data.size())
-    throw DataSizeException(expected, g.data.size());
+    throw std::logic_error("OccupancyGrid reported size and its real data size"
+      " differs. Corrupted OccupancyGrid?");
 }
 
 

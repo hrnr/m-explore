@@ -41,7 +41,8 @@
 #ifndef OCCUPANCY_GRID_UTILS_COORDINATE_CONVERSIONS_H
 #define OCCUPANCY_GRID_UTILS_COORDINATE_CONVERSIONS_H
 
-#include <occupancy_grid_utils/exceptions.h>
+#include <stdexcept>
+
 #include <tf/transform_datatypes.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <geometry_msgs/Polygon.h>
@@ -122,7 +123,7 @@ inline
 index_t cellIndex (const nav_msgs::MapMetaData& info, const Cell& c)
 {
   if (!withinBounds(info, c))
-    throw CellOutOfBoundsException(c.x, c.y);
+    throw std::out_of_range("Cell is off grid according to grid info");
   return c.x + c.y*info.width;
 }
 
