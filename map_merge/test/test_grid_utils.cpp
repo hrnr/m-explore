@@ -31,11 +31,6 @@
 #include <iostream>
 #include <cmath>
 
-#include <boost/foreach.hpp>
-#include <boost/bind.hpp>
-#include <boost/assign.hpp>
-
-#include <tf/transform_datatypes.h>
 #include <ros/ros.h>
 
 #include <gtest/gtest.h>
@@ -43,35 +38,19 @@
 #include <occupancy_grid_utils/combine_grids.h>
 #include <occupancy_grid_utils/coordinate_conversions.h>
 
-namespace gm=geometry_msgs;
-namespace nm=nav_msgs;
-namespace gu=occupancy_grid_utils;
-
-using std::ostream;
-using gu::Cell;
-using std::abs;
-using boost::bind;
-using std::vector;
-using std::set;
-using boost::assign::operator+=;
-using std::operator<<;
-
 const double PI = 3.14159265;
 const double TOL = 1e-6;
 
-
-typedef vector<Cell> Path;
-typedef set<Cell> Cells;
-typedef boost::shared_ptr<nm::OccupancyGrid> GridPtr;
-typedef boost::shared_ptr<nm::OccupancyGrid const> GridConstPtr;
+typedef boost::shared_ptr<nav_msgs::OccupancyGrid> GridPtr;
+typedef boost::shared_ptr<nav_msgs::OccupancyGrid const> GridConstPtr;
 
 /* helpers for tests */
 
 bool approxEqual (const double x, const double y);
-int val (const nm::OccupancyGrid& g, const gu::coord_t x, const gu::coord_t y);
-gm::Point makePoint (const double x, const double y);
-gm::Pose makePose (const double x, const double y, const double theta);
-void setVal (nm::OccupancyGrid* g, const gu::coord_t x, const gu::coord_t y, const int v);
+int val (const nav_msgs::OccupancyGrid& g, const occupancy_grid_utils::coord_t x, const occupancy_grid_utils::coord_t y);
+geometry_msgs::Point makePoint (const double x, const double y);
+geometry_msgs::Pose makePose (const double x, const double y, const double theta);
+void setVal (nav_msgs::OccupancyGrid* g, const occupancy_grid_utils::coord_t x, const occupancy_grid_utils::coord_t y, const signed char v);
 
 namespace geometry_msgs {
 bool operator== (const Polygon& p1, const Polygon& p2);
@@ -92,76 +71,76 @@ bool operator== (const Polygon& p1, const Polygon& p2)
 
 bool approxEqual (const double x, const double y)
 {
-  return abs(x-y)<TOL;
+  return std::abs(x-y)<TOL;
 }
 
-int val (const nm::OccupancyGrid& g, const gu::coord_t x, const gu::coord_t y)
+int val (const nav_msgs::OccupancyGrid& g, const occupancy_grid_utils::coord_t x, const occupancy_grid_utils::coord_t y)
 {
-  const gu::Cell c(x, y);
-  ROS_ASSERT (gu::withinBounds(g.info, c));
+  const occupancy_grid_utils::Cell c(x, y);
+  ROS_ASSERT (occupancy_grid_utils::withinBounds(g.info, c));
   return g.data[cellIndex(g.info, c)];
 }
 
-gm::Point makePoint (const double x, const double y)
+geometry_msgs::Point makePoint (const double x, const double y)
 {
-  gm::Point p;
+  geometry_msgs::Point p;
   p.x = x;
   p.y = y;
   return p;
 }
 
-gm::Pose makePose (const double x, const double y, const double theta)
+geometry_msgs::Pose makePose (const double x, const double y, const double theta)
 {
-  gm::Pose p;
+  geometry_msgs::Pose p;
   p.position.x = x;
   p.position.y = y;
   p.orientation = tf::createQuaternionMsgFromYaw(theta);
   return p;
 }
 
-void setVal (nm::OccupancyGrid* g, const gu::coord_t x, const gu::coord_t y, const int v)
+void setVal (nav_msgs::OccupancyGrid* g, const occupancy_grid_utils::coord_t x, const occupancy_grid_utils::coord_t y, const signed char v)
 {
-  const gu::Cell c(x, y);
-  ROS_ASSERT (gu::withinBounds(g->info, c));
+  const occupancy_grid_utils::Cell c(x, y);
+  ROS_ASSERT (occupancy_grid_utils::withinBounds(g->info, c));
   g->data[cellIndex(g->info, c)]=v;
 }
 
 TEST(GridUtils, CoordinateConversions)
 {
   // Set up info for a map at (2, -1) that is rotated 45 degrees, with resolution 0.1
-  nm::MapMetaData info;
-  info.resolution = 0.1;
+  nav_msgs::MapMetaData info;
+  info.resolution = 0.1f;
   info.origin = makePose(2, -1, PI/4);
   info.height = 50;
   info.width = 80;
 
   // Check conversions
-  EXPECT_EQ (804u, gu::cellIndex(info, Cell(4, 10)));
-  EXPECT_EQ (Cell(8, 1), gu::pointCell(info, makePoint(2.5, -0.35)));
-  EXPECT_EQ (88u, gu::pointIndex(info, makePoint(2.5, -0.35)));
-  EXPECT_EQ (Cell(-8, 7), gu::pointCell(info, makePoint(1, -1)));
-  EXPECT_THROW (gu::pointIndex(info, makePoint(1, -1)), std::out_of_range);
-  EXPECT_THROW (gu::cellIndex(info, Cell(100, 100)), std::out_of_range);
+  EXPECT_EQ (804u, occupancy_grid_utils::cellIndex(info, occupancy_grid_utils::Cell(4, 10)));
+  EXPECT_EQ (occupancy_grid_utils::Cell(8, 1), occupancy_grid_utils::pointCell(info, makePoint(2.5, -0.35)));
+  EXPECT_EQ (88u, occupancy_grid_utils::pointIndex(info, makePoint(2.5, -0.35)));
+  EXPECT_EQ (occupancy_grid_utils::Cell(-8, 7), occupancy_grid_utils::pointCell(info, makePoint(1, -1)));
+  EXPECT_THROW (occupancy_grid_utils::pointIndex(info, makePoint(1, -1)), std::out_of_range);
+  EXPECT_THROW (occupancy_grid_utils::cellIndex(info, occupancy_grid_utils::Cell(100, 100)), std::out_of_range);
 
   // Cell polygon 
-  const double side=sqrt(2)/2;
-  gm::Polygon expected;
+  const double side = std::sqrt(2)/2;
+  geometry_msgs::Polygon expected;
   expected.points.resize(4);
-  expected.points[0].x = 2 + .1*side;
-  expected.points[0].y = -1 + .3*side;
-  expected.points[1].x = 2;
-  expected.points[1].y = -1 + .4*side;
-  expected.points[2].x = 2 + .1*side;
-  expected.points[2].y = -1 + .5*side;
-  expected.points[3].x = 2 + .2*side;
-  expected.points[3].y = -1 + .4*side;
-  EXPECT_EQ(expected, cellPolygon(info, Cell(2, 1)));
+  expected.points[0].x = static_cast<float>(2 + .1*side);
+  expected.points[0].y = static_cast<float>(-1 + .3*side);
+  expected.points[1].x = static_cast<float>(2);
+  expected.points[1].y = static_cast<float>(-1 + .4*side);
+  expected.points[2].x = static_cast<float>(2 + .1*side);
+  expected.points[2].y = static_cast<float>(-1 + .5*side);
+  expected.points[3].x = static_cast<float>(2 + .2*side);
+  expected.points[3].y = static_cast<float>(-1 + .4*side);
+  EXPECT_EQ(expected, cellPolygon(info, occupancy_grid_utils::Cell(2, 1)));
 }
 
 TEST(GridUtils, CombineGrids)
 {
-  GridPtr g1(new nm::OccupancyGrid());
-  GridPtr g2(new nm::OccupancyGrid());
+  GridPtr g1(new nav_msgs::OccupancyGrid());
+  GridPtr g2(new nav_msgs::OccupancyGrid());
   
   g1->info.origin = makePose(2, 1, 0);
   g2->info.origin = makePose(3, 0, PI/4);
@@ -188,17 +167,16 @@ TEST(GridUtils, CombineGrids)
   setVal(g1.get(), 3, 0, 24);
   setVal(g1.get(), 0, 0, 66);
   setVal(g1.get(), 4, 0, 90);
-
-
   
-  vector<GridConstPtr> grids;
-  grids += g1, g2;
-  GridPtr combined = gu::combineGrids(grids, g1->info.resolution/2.0);
+  std::vector<GridConstPtr> grids;
+  grids.push_back(g1);
+  grids.push_back(g2);
+  GridPtr combined = occupancy_grid_utils::combineGrids(grids, g1->info.resolution/2.0);
   
-  EXPECT_PRED2(approxEqual, 3-sqrt(2), combined->info.origin.position.x);
+  EXPECT_PRED2(approxEqual, 3-std::sqrt(2), combined->info.origin.position.x);
   EXPECT_PRED2(approxEqual, 0, combined->info.origin.position.y);
   EXPECT_EQ(0.25, combined->info.resolution);
-  EXPECT_EQ(round((2+sqrt(2))/0.25), combined->info.width);
+  EXPECT_EQ(std::round((2+std::sqrt(2))/0.25), combined->info.width);
   EXPECT_EQ(12u, combined->info.height);
 
   // Note there are rounding issues that mean that some of the values below
