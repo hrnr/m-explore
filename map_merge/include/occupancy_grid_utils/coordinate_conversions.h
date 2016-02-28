@@ -44,13 +44,13 @@
 #define OCCUPANCY_GRID_UTILS_COORDINATE_CONVERSIONS_H
 
 #include <stdexcept>
+#include <cstdlib>
+#include <cmath>
 
+#include <ros/assert.h>
 #include <tf/transform_datatypes.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <geometry_msgs/Polygon.h>
-#include <ros/assert.h>
-#include <cstdlib>
-#include <ostream>
 
 namespace occupancy_grid_utils
 {
@@ -76,12 +76,12 @@ struct Cell
 // These values have conventional meanings for occupancy grids
 const int8_t UNOCCUPIED=0;
 const int8_t OCCUPIED=100;
-const int8_t UNKNOWN=255;
+const int8_t UNKNOWN=-1;
 
 
 /// \brief Returns the index of a cell.  
 /// 
-/// \throws CellOutOfBoundsException if cell isn't within grid bounds
+/// \throws std::out_of_range if cell isn't within grid bounds
 index_t cellIndex (const nav_msgs::MapMetaData& info, const Cell& c);
 
 /// \brief Returns cell corresponding to index
@@ -93,7 +93,7 @@ Cell indexCell (const nav_msgs::MapMetaData& info, index_t ind);
 Cell pointCell (const nav_msgs::MapMetaData& info, const geometry_msgs::Point& p);
 
 /// \brief Returns index of a point. 
-/// \throws CellOutOfBoundsException if point isn't within grid bounds
+/// \throws std::out_of_range if point isn't within grid bounds
 ///
 /// Ignores z coordinate of point
 index_t pointIndex (const nav_msgs::MapMetaData& info, const geometry_msgs::Point& p);
@@ -113,8 +113,8 @@ bool withinBounds (const nav_msgs::MapMetaData& info, const Cell& c);
 /// \brief Return polygon corresponding to grid bounds
 geometry_msgs::Polygon gridPolygon (const nav_msgs::MapMetaData& info);
 
-/// \brief Verify that data vector has the right size, throw
-/// DataSizeException otherwise
+/// \brief Verify that data vector has the right size
+/// \throws std::logic_error otherwise
 void verifyDataSize (const nav_msgs::OccupancyGrid& g);
 
 /************************************************************
@@ -132,7 +132,7 @@ index_t cellIndex (const nav_msgs::MapMetaData& info, const Cell& c)
 inline
 Cell indexCell (const nav_msgs::MapMetaData& info, const index_t ind)
 {
-  const div_t result = div((int) ind, (int) info.width);
+  const div_t result = std::div((int) ind, (int) info.width);
   return Cell(result.rem, result.quot);
 }
 
@@ -157,7 +157,7 @@ Cell pointCell (const nav_msgs::MapMetaData& info, const geometry_msgs::Point& p
   tf::Point pt;
   tf::pointMsgToTF(p, pt);
   tf::Point p2 = worldToMap(info)*pt;
-  return Cell(floor(p2.x()/info.resolution), floor(p2.y()/info.resolution));
+  return Cell(std::floor(p2.x()/info.resolution), std::floor(p2.y()/info.resolution));
 }
 
 inline 
