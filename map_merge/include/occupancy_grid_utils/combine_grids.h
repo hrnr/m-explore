@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2008, Willow Garage, Inc.
+ * Copyright (c) 2015-2016, Jiri Horner
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -10,7 +11,7 @@
  *     * Redistributions in binary form must reproduce the above copyright
  *       notice, this list of conditions and the following disclaimer in the
  *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the Willow Garage, Inc. nor the names of its
+ *     * Neither the name of the Jiri Horner nor the names of its
  *       contributors may be used to endorse or promote products derived from
  *       this software without specific prior written permission.
  *
@@ -35,6 +36,7 @@
  * Combining overlapping grids
  *
  * \author Bhaskara Marthi
+ * \author Jiri Horner
  */
 
 #ifndef OCCUPANCY_GRID_UTILS_COMBINE_GRIDS_H
