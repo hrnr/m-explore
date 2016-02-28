@@ -35,7 +35,7 @@
  *
  *********************************************************************/
 
-#include "../include/map_merge.h"
+#include <map_merge/map_merge.h>
 
 #include <functional>
 #include <thread>
@@ -43,6 +43,8 @@
 #include <ros/console.h>
 #include <occupancy_grid_utils/combine_grids.h>
 #include <tf/transform_datatypes.h>
+
+namespace map_merge {
 
 geometry_msgs::Pose& operator+=(geometry_msgs::Pose&, const geometry_msgs::Pose&);
 
@@ -235,13 +237,15 @@ void MapMerging::spin() {
   t.join();
 }
 
+} // namespace map_merge
+
 int main(int argc, char **argv) {
   ros::init(argc, argv, "map_merge");
   // this package is still in development -- start wil debugging enabled
   if(ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug) ) {
     ros::console::notifyLoggerLevelsChanged();
   }
-  MapMerging map_merging;
+  map_merge::MapMerging map_merging;
   map_merging.spin();
   return 0;
 }

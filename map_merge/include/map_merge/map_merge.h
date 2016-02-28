@@ -47,6 +47,8 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/OccupancyGrid.h>
 
+namespace map_merge {
+
 struct PosedMap {
   std::mutex mutex;
 
@@ -87,5 +89,7 @@ public:
   void topicSubscribing();
   void mapMerging();
 };
+
+} // namespace map_merge
 
 #endif /* MAP_MERGE_H_ */
