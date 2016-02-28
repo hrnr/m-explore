@@ -42,56 +42,66 @@ sub {
 }
 
 param {
-  0.name = <robot_namespace>/map_merge/init_pose_x
-  0.default = `<no_default>`
-  0.type = double
-  0.desc = `x` coordinate of robot initial position in `world_frame`. Should be in meters. It does not matter which frame you will consider global (preferably it should be different from all robots frames), but relative positions of robots in this frame must be correct.
+  group.0 {
+    name = ROBOT PARAMETERS
+    desc = Parameters that should be defined in the namespace of each robot. Without these parameters robots won't be considered for merging.
 
-  1.name = <robot_namespace>/map_merge/init_pose_y
-  1.default = `<no_default>`
-  1.type = double
-  1.desc = `y` coordinate of robot initial position in `world_frame`.
+    0.name = <robot_namespace>/map_merge/init_pose_x
+    0.default = `<no_default>`
+    0.type = double
+    0.desc = `x` coordinate of robot initial position in `world_frame`. Should be in meters. It does not matter which frame you will consider global (preferably it should be different from all robots frames), but relative positions of robots in this frame must be correct.
 
-  2.name = <robot_namespace>/map_merge/init_pose_z
-  2.default = `<no_default>`
-  2.type = double
-  2.desc = `z` coordinate of robot initial position in `world_frame`.
+    1.name = <robot_namespace>/map_merge/init_pose_y
+    1.default = `<no_default>`
+    1.type = double
+    1.desc = `y` coordinate of robot initial position in `world_frame`.
 
-  3.name = <robot_namespace>/map_merge/init_pose_yaw
-  3.default = `<no_default>`
-  3.type = double
-  3.desc = `yaw` component of robot initial position in `world_frame`. Represents robot rotation in radians.
+    2.name = <robot_namespace>/map_merge/init_pose_z
+    2.default = `<no_default>`
+    2.type = double
+    2.desc = `z` coordinate of robot initial position in `world_frame`.
 
-  4.name = ~robot_map_topic
-  4.default = `map`
-  4.type = string
-  4.desc = Name of robot map topic without namespaces (last component of topic name). Only topics with this name will be considered when looking for new maps to merge. This topics may be subject to further filtering (see below).
+    3.name = <robot_namespace>/map_merge/init_pose_yaw
+    3.default = `<no_default>`
+    3.type = double
+    3.desc = `yaw` component of robot initial position in `world_frame`. Represents robot rotation in radians.
+  }
 
-  5.name = ~robot_namespace
-  5.default = `` (empty string)
-  5.type = string
-  5.desc = Fixed part of robot map topic. You can employ this parameter to further limit which topics will be considered during dynamic lookup for robots. Only topics which contain (anywhere) this string will be considered for lookup. Unlike `robot_map_topic` you are not limited by namespace logic. Topics will be filtered using text-based search. Therefore `robot_namespace` does not need to be ROS namespace, but can contain slashes etc. This must be common part of all robots map topics name (all robots for which you want to merge map).
+  group.1 {
+    name = NODE PARAMETERS
+    desc = Parameters that should be defined in the namespace of this node. 
 
-  6.name = ~merged_map_topic
-  6.default = `map`
-  6.type = string
-  6.desc = Topic name where merged map will be published.
+    4.name = ~robot_map_topic
+    4.default = `map`
+    4.type = string
+    4.desc = Name of robot map topic without namespaces (last component of topic name). Only topics with this name will be considered when looking for new maps to merge. This topics may be subject to further filtering (see below).
 
-  7.name = ~world_frame
-  7.default = `world`
-  7.type = string
-  7.desc = Frame id (in [[tf]] tree) which will be assigned to published merged map. This should be frame where you specified robot initial positions.
+    5.name = ~robot_namespace
+    5.default = `` (empty string)
+    5.type = string
+    5.desc = Fixed part of robot map topic. You can employ this parameter to further limit which topics will be considered during dynamic lookup for robots. Only topics which contain (anywhere) this string will be considered for lookup. Unlike `robot_map_topic` you are not limited by namespace logic. Topics will be filtered using text-based search. Therefore `robot_namespace` does not need to be ROS namespace, but can contain slashes etc. This must be common part of all robots map topics name (all robots for which you want to merge map).
 
-  8.name = ~merging_rate
-  8.default = `4.0`
-  8.type = double
-  8.desc = Rate in Hz. Basic frequency on which this node discovers new robots, merges their maps and publish merged map. Increase this value if you want faster updates.
+    6.name = ~merged_map_topic
+    6.default = `map`
+    6.type = string
+    6.desc = Topic name where merged map will be published.
+
+    7.name = ~world_frame
+    7.default = `world`
+    7.type = string
+    7.desc = Frame id (in [[tf]] tree) which will be assigned to published merged map. This should be frame where you specified robot initial positions.
+
+    8.name = ~merging_rate
+    8.default = `4.0`
+    8.type = double
+    8.desc = Rate in Hz. Basic frequency on which this node discovers new robots, merges their maps and publish merged map. Increase this value if you want faster updates.
+  }
 }
 }}}
 
 == Acknowledgements ==
 
-Idea for dynamic robot discovery is from `map_merging` package from Zhi Yan. Merging algorithm and configuration are different.
+Idea for dynamic robot discovery is from [[map_merging]] package from Zhi Yan. Merging algorithm and configuration are different.
 
 ## AUTOGENERATED DON'T DELETE
 ## CategoryPackage
