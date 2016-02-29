@@ -109,9 +109,10 @@ void MapMerging::topicSubscribing()
     robots_.insert({robot_name, &map});
     map.initial_pose = init_pose;
     {
-      // we need exclusive lock here. all iterators may be invalidated for
-      // grid_view_
-      std::lock_guard<boost::shared_mutex> lock(merging_mutex_);
+      // we need only shared lock here. Map updating callbacks are not using
+      // grid_view_, but maps directly. Of course this must not run concurently
+      // with map merging as all iterators may be invalidated for grid_view_
+      boost::shared_lock<boost::shared_mutex> lock(merging_mutex_);
       grid_view_.emplace_back(map.map);
     }
 
