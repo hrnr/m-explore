@@ -48,6 +48,7 @@
 #include <ros/ros.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/OccupancyGrid.h>
+#include <map_msgs/OccupancyGridUpdate.h>
 
 namespace map_merge
 {
@@ -58,6 +59,7 @@ struct PosedMap {
   nav_msgs::OccupancyGrid map;
 
   ros::Subscriber map_sub;
+  ros::Subscriber map_updates_sub;
 };
 
 class MapMerging
@@ -68,6 +70,7 @@ private:
   /* parameters */
   double merging_rate_;
   std::string robot_map_topic_;
+  std::string robot_map_updates_topic_;
   std::string robot_namespace_;
 
   /* publisher */
@@ -89,7 +92,10 @@ private:
   bool isRobotMapTopic(const ros::master::TopicInfo& topic);
   bool getInitPose(const std::string& name, geometry_msgs::Pose& pose);
 
-  void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg, PosedMap* map);
+  void fullMapUpdate(const nav_msgs::OccupancyGrid::ConstPtr& msg,
+                     PosedMap& map);
+  void partialMapUpdate(const map_msgs::OccupancyGridUpdate::ConstPtr& msg,
+                        PosedMap& map);
 
 public:
   MapMerging();

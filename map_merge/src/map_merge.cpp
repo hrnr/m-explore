@@ -37,11 +37,11 @@
 
 #include <map_merge/map_merge.h>
 
-#include <functional>
 #include <thread>
 
 #include <ros/console.h>
 #include <occupancy_grid_utils/combine_grids.h>
+#include <occupancy_grid_utils/coordinate_conversions.h>
 #include <tf/transform_datatypes.h>
 
 namespace map_merge
@@ -57,6 +57,8 @@ MapMerging::MapMerging()
 
   private_nh.param("merging_rate", merging_rate_, 4.0);
   private_nh.param<std::string>("robot_map_topic", robot_map_topic_, "map");
+  private_nh.param<std::string>("robot_map_updates_topic",
+                                robot_map_updates_topic_, "map_updates");
   private_nh.param<std::string>("robot_namespace", robot_namespace_, "");
   private_nh.param<std::string>("merged_map_topic", merged_map_topic, "map");
   private_nh.param<std::string>("world_frame", frame_id, "world");
@@ -80,6 +82,7 @@ void MapMerging::topicSubscribing()
     geometry_msgs::Pose init_pose;
     std::string robot_name;
     std::string map_topic;
+    std::string map_updates_topic;
 
     // we check only map topic
     if (!isRobotMapTopic(topic)) {
@@ -102,21 +105,32 @@ void MapMerging::topicSubscribing()
 
     ROS_INFO("adding robot [%s] to system", robot_name.c_str());
     maps_.emplace_front();
-    PosedMap* map = &maps_.front();
-    robots_.insert({robot_name, map});
-    map->initial_pose = init_pose;
+    PosedMap& map = maps_.front();
+    robots_.insert({robot_name, &map});
+    map.initial_pose = init_pose;
     {
       // we need exclusive lock here. all iterators may be invalidated for
       // grid_view_
       std::lock_guard<boost::shared_mutex> lock(merging_mutex_);
-      grid_view_.emplace_back(map->map);
+      grid_view_.emplace_back(map.map);
     }
 
     map_topic = ros::names::append(robot_name, robot_map_topic_);
+    map_updates_topic =
+        ros::names::append(robot_name, robot_map_updates_topic_);
     ROS_INFO("Subscribing to MAP topic: %s.", map_topic.c_str());
-    map->map_sub = node_.subscribe<nav_msgs::OccupancyGrid>(
+    map.map_sub = node_.subscribe<nav_msgs::OccupancyGrid>(
         map_topic, 50,
-        std::bind(&MapMerging::mapCallback, this, std::placeholders::_1, map));
+        [this, &map](const nav_msgs::OccupancyGrid::ConstPtr& msg) {
+          fullMapUpdate(msg, map);
+        });
+    ROS_INFO("Subscribing to MAP updates topic: %s.",
+             map_updates_topic.c_str());
+    map.map_updates_sub = node_.subscribe<map_msgs::OccupancyGridUpdate>(
+        map_updates_topic, 50,
+        [this, &map](const map_msgs::OccupancyGridUpdate::ConstPtr& msg) {
+          partialMapUpdate(msg, map);
+        });
   }
 }
 
@@ -142,12 +156,12 @@ void MapMerging::mapMerging()
   merged_map_publisher_.publish(merged_map_);
 }
 
-void MapMerging::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg,
-                             PosedMap* map)
+void MapMerging::fullMapUpdate(const nav_msgs::OccupancyGrid::ConstPtr& msg,
+                               PosedMap& map)
 {
-  ROS_DEBUG("mapCallback for map at [%p]", static_cast<void*>(map));
+  ROS_DEBUG("received full map update");
   // we don't want to access the same map twice
-  std::lock_guard<std::mutex> lock(map->mutex);
+  std::lock_guard<std::mutex> lock(map.mutex);
   // it's ok if we do multiple updates of *different* maps concurently.
   // However we can't do any merging while updating any map metadata (size!)
   boost::shared_lock<boost::shared_mutex> merging_lock(merging_mutex_);
@@ -159,26 +173,68 @@ void MapMerging::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg,
    * occur when this callback runs concurently. Also map could be accessed by
    * other callbacks (partials updates). */
 
-  map->map = *msg;
+  map.map = *msg;
 
   ROS_DEBUG("Adjusting origin");
   // compute global position
-  ROS_DEBUG("origin %f %f, (%f, %f, %f, %f)", map->map.info.origin.position.x,
-            map->map.info.origin.position.y, map->map.info.origin.orientation.x,
-            map->map.info.origin.orientation.y,
-            map->map.info.origin.orientation.z,
-            map->map.info.origin.orientation.w);
-  map->map.info.origin += map->initial_pose;
-  ROS_DEBUG("origin %f %f, (%f, %f, %f, %f)", map->map.info.origin.position.x,
-            map->map.info.origin.position.y, map->map.info.origin.orientation.x,
-            map->map.info.origin.orientation.y,
-            map->map.info.origin.orientation.z,
-            map->map.info.origin.orientation.w);
+  ROS_DEBUG("origin %f %f, (%f, %f, %f, %f)", map.map.info.origin.position.x,
+            map.map.info.origin.position.y, map.map.info.origin.orientation.x,
+            map.map.info.origin.orientation.y,
+            map.map.info.origin.orientation.z,
+            map.map.info.origin.orientation.w);
+  map.map.info.origin += map.initial_pose;
+  ROS_DEBUG("origin %f %f, (%f, %f, %f, %f)", map.map.info.origin.position.x,
+            map.map.info.origin.position.y, map.map.info.origin.orientation.x,
+            map.map.info.origin.orientation.y,
+            map.map.info.origin.orientation.z,
+            map.map.info.origin.orientation.w);
 }
 
-/*********************
- * private function *
- *********************/
+void MapMerging::partialMapUpdate(
+    const map_msgs::OccupancyGridUpdate::ConstPtr& msg, PosedMap& map)
+{
+  ROS_DEBUG("received partial map update");
+
+  if (msg->x < 0 || msg->y < 0) {
+    ROS_ERROR("negative coordinates, invalid update. x: %d, y: %d", msg->x,
+              msg->y);
+    return;
+  }
+
+  size_t x0 = static_cast<size_t>(msg->x);
+  size_t y0 = static_cast<size_t>(msg->y);
+  size_t xn = msg->width + x0;
+  size_t yn = msg->height + y0;
+
+  // we must lock map. Otherwise it could break horribly if fullMapUpdate would
+  // run at the same time (reaalloc of vector)
+  std::lock_guard<std::mutex> lock(map.mutex);
+
+  /* map merging is not blocked by these small updates. It can cause minor
+   * inconsitency, but thats not a big issue, it could only bring parts of new
+   * data to merged map. No locking needed. */
+
+  size_t grid_xn = map.map.info.width;
+  size_t grid_yn = map.map.info.height;
+
+  if (xn > grid_xn || x0 > grid_xn || yn > grid_yn || y0 > grid_yn) {
+    ROS_WARN("received update doesn't fully fit into existing map, "
+             "only part will be copied. received: [%lu, %lu], [%lu, %lu] "
+             "map is: [0, %lu], [0, %lu]",
+             x0, xn, y0, yn, grid_xn, grid_yn);
+  }
+
+  // update map with data
+  size_t i = 0;
+  for (size_t y = y0; y < yn && y < grid_yn; ++y) {
+    for (size_t x = x0; x < xn && x < grid_xn; ++x) {
+      size_t idx = y * grid_xn + x;  // index to grid for this specified cell
+      map.map.data[idx] = msg->data[i];
+      ++i;
+    }
+  }
+}
+
 std::string MapMerging::robotNameFromTopic(const std::string& topic)
 {
   return ros::names::parentNamespace(topic);
