@@ -44,11 +44,13 @@
 #include <occupancy_grid_utils/combine_grids.h>
 #include <tf/transform_datatypes.h>
 
-namespace map_merge {
+namespace map_merge
+{
+geometry_msgs::Pose& operator+=(geometry_msgs::Pose&,
+                                const geometry_msgs::Pose&);
 
-geometry_msgs::Pose& operator+=(geometry_msgs::Pose&, const geometry_msgs::Pose&);
-
-MapMerging::MapMerging() {
+MapMerging::MapMerging()
+{
   ros::NodeHandle private_nh("~");
   std::string frame_id;
   std::string merged_map_topic;
@@ -62,23 +64,25 @@ MapMerging::MapMerging() {
   merged_map_.header.frame_id = frame_id;
 
   /* publishing */
-  merged_map_publisher_ = node_.advertise<nav_msgs::OccupancyGrid>(merged_map_topic, 50, true);
+  merged_map_publisher_ =
+      node_.advertise<nav_msgs::OccupancyGrid>(merged_map_topic, 50, true);
 }
 
 /*
  * Subcribe to pose and map topics
  */
-void MapMerging::topicSubscribing() {
+void MapMerging::topicSubscribing()
+{
   ros::master::V_TopicInfo topic_infos;
   ros::master::getTopics(topic_infos);
 
-  for(const auto& topic : topic_infos) {
+  for (const auto& topic : topic_infos) {
     geometry_msgs::Pose init_pose;
     std::string robot_name;
     std::string map_topic;
 
     // we check only map topic
-    if(!isRobotMapTopic(topic)) {
+    if (!isRobotMapTopic(topic)) {
       continue;
     }
 
@@ -88,53 +92,48 @@ void MapMerging::topicSubscribing() {
       continue;
     }
 
-    if(!getInitPose(robot_name, init_pose)) {
+    if (!getInitPose(robot_name, init_pose)) {
       ROS_WARN("couldn't get initial position for robot [%s]\n"
-        "did you defined parameters map_merge/init_pose_[xyz]? in robot namespace?",
-        robot_name.c_str());
+               "did you defined parameters map_merge/init_pose_[xyz]? in robot "
+               "namespace?",
+               robot_name.c_str());
       continue;
     }
 
     ROS_INFO("adding robot [%s] to system", robot_name.c_str());
     maps_.emplace_front();
-    PosedMap *map = &maps_.front();
-    robots_.insert({ robot_name, map });
+    PosedMap* map = &maps_.front();
+    robots_.insert({robot_name, map});
     map->initial_pose = init_pose;
+    {
+      // we need exclusive lock here. all iterators may be invalidated for
+      // grid_view_
+      std::lock_guard<boost::shared_mutex> lock(merging_mutex_);
+      grid_view_.emplace_back(map->map);
+    }
 
     map_topic = ros::names::append(robot_name, robot_map_topic_);
     ROS_INFO("Subscribing to MAP topic: %s.", map_topic.c_str());
     map->map_sub = node_.subscribe<nav_msgs::OccupancyGrid>(
-      map_topic,
-      50,
-      std::bind(&MapMerging::mapCallback, this, std::placeholders::_1, map)
-    );
+        map_topic, 50,
+        std::bind(&MapMerging::mapCallback, this, std::placeholders::_1, map));
   }
 }
 
 /*
  * mapMerging()
  */
-void MapMerging::mapMerging() {
-  std::vector<std::reference_wrapper<nav_msgs::OccupancyGrid>> maps_merged;
-  maps_merged.reserve(robots_.size());
-
+void MapMerging::mapMerging()
+{
   ROS_DEBUG("Map merging started");
-  for (auto& p_map : maps_) {
-    std::lock_guard<std::mutex> lock(p_map.mutex);
 
-    // map not yet received
-    if (p_map.map.data.empty()) {
-      continue;
-    }
-
-    maps_merged.emplace_back(p_map.map);
+  {
+    // exclusive locking. we dont map sizes to change during muxing.
+    std::lock_guard<boost::shared_mutex> lock(merging_mutex_);
+    // TODO: skip empty maps
+    occupancy_grid_utils::combineGrids(grid_view_.cbegin(), grid_view_.cend(),
+                                       merged_map_);
   }
-
-  if (maps_merged.empty()) {
-    return;
-  }
-
-  occupancy_grid_utils::combineGrids(maps_merged.cbegin(), maps_merged.cend(), merged_map_);
 
   ROS_DEBUG("all maps merged, publishing");
   ros::Time now = ros::Time::now();
@@ -143,46 +142,68 @@ void MapMerging::mapMerging() {
   merged_map_publisher_.publish(merged_map_);
 }
 
-void MapMerging::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr &msg, PosedMap *map) {
+void MapMerging::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg,
+                             PosedMap* map)
+{
   ROS_DEBUG("mapCallback for map at [%p]", static_cast<void*>(map));
+  // we don't want to access the same map twice
   std::lock_guard<std::mutex> lock(map->mutex);
+  // it's ok if we do multiple updates of *different* maps concurently.
+  // However we can't do any merging while updating any map metadata (size!)
+  boost::shared_lock<boost::shared_mutex> merging_lock(merging_mutex_);
+
+  /* We dont need to lock both locks at once. Deadlock will not occur here.
+   * Circular waiting will never occur. We don't lock individual mutexes for
+   * maps while merging. So merging and map update share only second lock. Lock
+   * on map itself is here to avoid multiple accesses to the same map, which can
+   * occur when this callback runs concurently. Also map could be accessed by
+   * other callbacks (partials updates). */
 
   map->map = *msg;
 
   ROS_DEBUG("Adjusting origin");
   // compute global position
-  ROS_DEBUG("origin %f %f, (%f, %f, %f, %f)", map->map.info.origin.position.x, 
-    map->map.info.origin.position.y, map->map.info.origin.orientation.x, map->map.info.origin.orientation.y,
-    map->map.info.origin.orientation.z, map->map.info.origin.orientation.w);
+  ROS_DEBUG("origin %f %f, (%f, %f, %f, %f)", map->map.info.origin.position.x,
+            map->map.info.origin.position.y, map->map.info.origin.orientation.x,
+            map->map.info.origin.orientation.y,
+            map->map.info.origin.orientation.z,
+            map->map.info.origin.orientation.w);
   map->map.info.origin += map->initial_pose;
-  ROS_DEBUG("origin %f %f, (%f, %f, %f, %f)", map->map.info.origin.position.x, 
-    map->map.info.origin.position.y, map->map.info.origin.orientation.x, map->map.info.origin.orientation.y,
-    map->map.info.origin.orientation.z, map->map.info.origin.orientation.w);
+  ROS_DEBUG("origin %f %f, (%f, %f, %f, %f)", map->map.info.origin.position.x,
+            map->map.info.origin.position.y, map->map.info.origin.orientation.x,
+            map->map.info.origin.orientation.y,
+            map->map.info.origin.orientation.z,
+            map->map.info.origin.orientation.w);
 }
 
 /*********************
  * private function *
  *********************/
-std::string MapMerging::robotNameFromTopic(const std::string& topic) {
+std::string MapMerging::robotNameFromTopic(const std::string& topic)
+{
   return ros::names::parentNamespace(topic);
 }
 
-geometry_msgs::Pose& operator+=(geometry_msgs::Pose& p1, const geometry_msgs::Pose& p2) {
+geometry_msgs::Pose& operator+=(geometry_msgs::Pose& p1,
+                                const geometry_msgs::Pose& p2)
+{
   tf::Pose tf_p1, tf_p2;
   tf::poseMsgToTF(p1, tf_p1);
   tf::poseMsgToTF(p2, tf_p2);
 
   tf_p1 *= tf_p2;
   tf::poseTFToMsg(tf_p1, p1);
-  
+
   return p1;
 }
 
 /* identifies topic via suffix */
-bool MapMerging::isRobotMapTopic(const ros::master::TopicInfo& topic) {
+bool MapMerging::isRobotMapTopic(const ros::master::TopicInfo& topic)
+{
   /* test whether topic is robot_map_topic_ */
   std::string topic_namespace = ros::names::parentNamespace(topic.name);
-  bool is_map_topic = ros::names::append(topic_namespace, robot_map_topic_) == topic.name;
+  bool is_map_topic =
+      ros::names::append(topic_namespace, robot_map_topic_) == topic.name;
 
   /* test whether topic contains *anywhere* robot namespace */
   auto pos = topic.name.find(robot_namespace_);
@@ -194,21 +215,27 @@ bool MapMerging::isRobotMapTopic(const ros::master::TopicInfo& topic) {
   /* we don't want to subcribe on published merged map */
   bool is_our_topic = merged_map_publisher_.getTopic() == topic.name;
 
-  return is_occupancy_grid && !is_our_topic &&
-    contains_robot_namespace && is_map_topic;
+  return is_occupancy_grid && !is_our_topic && contains_robot_namespace &&
+         is_map_topic;
 }
 
 /*
  * Get robot's initial position
  */
-bool MapMerging::getInitPose(const std::string& name, geometry_msgs::Pose& pose) {
+bool MapMerging::getInitPose(const std::string& name, geometry_msgs::Pose& pose)
+{
   std::string merging_namespace = ros::names::append(name, "map_merge");
   double yaw = 0.0;
 
-  bool success = ros::param::get(ros::names::append(merging_namespace, "init_pose_x"), pose.position.x) &&
-    ros::param::get(ros::names::append(merging_namespace, "init_pose_y"), pose.position.y) &&
-    ros::param::get(ros::names::append(merging_namespace, "init_pose_z"), pose.position.z) &&
-    ros::param::get(ros::names::append(merging_namespace, "init_pose_yaw"), yaw);
+  bool success =
+      ros::param::get(ros::names::append(merging_namespace, "init_pose_x"),
+                      pose.position.x) &&
+      ros::param::get(ros::names::append(merging_namespace, "init_pose_y"),
+                      pose.position.y) &&
+      ros::param::get(ros::names::append(merging_namespace, "init_pose_z"),
+                      pose.position.z) &&
+      ros::param::get(ros::names::append(merging_namespace, "init_pose_yaw"),
+                      yaw);
 
   pose.orientation = tf::createQuaternionMsgFromYaw(yaw);
 
@@ -218,9 +245,10 @@ bool MapMerging::getInitPose(const std::string& name, geometry_msgs::Pose& pose)
 /*
  * execute()
  */
-void MapMerging::execute() {
+void MapMerging::execute()
+{
   ros::Rate r(merging_rate_);
-  while(node_.ok()) {
+  while (node_.ok()) {
     topicSubscribing();
     mapMerging();
     r.sleep();
@@ -230,19 +258,22 @@ void MapMerging::execute() {
 /*
  * spin()
  */
-void MapMerging::spin() {
+void MapMerging::spin()
+{
   ros::spinOnce();
-  std::thread t([this](){execute();});
+  std::thread t([this]() { execute(); });
   ros::spin();
   t.join();
 }
 
-} // namespace map_merge
+}  // namespace map_merge
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv)
+{
   ros::init(argc, argv, "map_merge");
   // this package is still in development -- start wil debugging enabled
-  if(ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug) ) {
+  if (ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME,
+                                     ros::console::levels::Debug)) {
     ros::console::notifyLoggerLevelsChanged();
   }
   map_merge::MapMerging map_merging;

@@ -43,12 +43,14 @@
 #include <mutex>
 #include <forward_list>
 
+#include <boost/thread.hpp>
+
 #include <ros/ros.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/OccupancyGrid.h>
 
-namespace map_merge {
-
+namespace map_merge
+{
 struct PosedMap {
   std::mutex mutex;
 
@@ -58,38 +60,47 @@ struct PosedMap {
   ros::Subscriber map_sub;
 };
 
-class MapMerging {
+class MapMerging
+{
 private:
   ros::NodeHandle node_;
-  
-  /*** ROS parameters ***/
+
+  /* parameters */
   double merging_rate_;
   std::string robot_map_topic_;
   std::string robot_namespace_;
-  
-  /*** ROS publishers ***/
+
+  /* publisher */
   nav_msgs::OccupancyGrid merged_map_;
   ros::Publisher merged_map_publisher_;
-  
+
+  // maps robots namespaces to maps. does not own
   std::unordered_map<std::string, PosedMap*> robots_;
+  // owns maps -- iterator safe
   std::forward_list<PosedMap> maps_;
-  
+  // does not own. view of only grids from PosedMaps for merging
+  std::vector<std::reference_wrapper<nav_msgs::OccupancyGrid>> grid_view_;
+  // this must be locked exclusively when modifying grid_view_ or changing
+  // metadata (esp. size!) of OccupancyGrids inside. This could otherwise break
+  // horribly because merging algorithm needs to compute merged map size first.
+  boost::shared_mutex merging_mutex_;
+
   std::string robotNameFromTopic(const std::string& topic);
   bool isRobotMapTopic(const ros::master::TopicInfo& topic);
   bool getInitPose(const std::string& name, geometry_msgs::Pose& pose);
 
-  void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr &msg, PosedMap *map);
-  
+  void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg, PosedMap* map);
+
 public:
   MapMerging();
-  
+
   void spin();
   void execute();
-  
+
   void topicSubscribing();
   void mapMerging();
 };
 
-} // namespace map_merge
+}  // namespace map_merge
 
 #endif /* MAP_MERGE_H_ */
