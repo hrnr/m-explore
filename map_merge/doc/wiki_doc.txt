@@ -7,6 +7,8 @@
 == Overview ==
 This package provides global map for multiple robots. It can merge maps from arbitrary number of robots. It expects maps from individual robots as ROS topics. If your run multiple robots under the same ROS master then {{{multirobot_map_merge}}} will probably work for you out-of-the-box. It is also very easy to setup an simulation experiment.
 
+{{attachment:screenshot.jpg||width="755px"}}
+
 If your run your robots under multiple ROS masters you need to run your own way of communication between robots and provide maps from robots on local topics (under the same master). Also if you want to distribute merged map back to robots your communication must take care of it.
 
 {{{multirobot_map_merge}}} does not depend on any particular communication between robots.
