@@ -7,6 +7,8 @@
 == Overview ==
 This package provides greedy frontier-based exploration. When node is running, robot will greedily explore its enviroment until no frontiers could be found. Movement commands will be send to [[move_base]].
 
+{{attachment:screenshot.png||width="755px"}}
+
 Unlike similar packages, {{{explore_lite}}} does not create it's own costmap. Node subscribes to <<MsgLink(nav_msgs/OccupancyGrid)>> messages. Commands for robot movement are send to [[move_base]] node.
 
 == Architecture ==
