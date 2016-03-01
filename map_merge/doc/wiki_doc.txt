@@ -40,7 +40,11 @@ pub {
 sub {
   0.name = <robot_namespace>/map
   0.type = nav_msgs/OccupancyGrid
-  0.desc = Local map for specific robot. 
+  0.desc = Local map for specific robot.
+
+  1.name = <robot_namespace>/map_updates
+  1.type = map_msgs/OccupancyGridUpdate
+  1.desc = Local map updates for specific robot. Most of the <<MsgLink(nav_msgs/OccupancyGrid)>> sources (mapping algorithms) provides incremental map updates via this topic so they don't need to send always full map. This topic is optional. If your mapping algorithm does not provide this topic it is safe to ignore this topic. However if your mapping algorithm does provide this topic, it is preferable to subscribe to this topic. Otherwise map updates will be slow as all partial updates will be missed and map will be able to update only on full map updates.
 }
 
 param {
@@ -78,25 +82,30 @@ param {
     4.type = string
     4.desc = Name of robot map topic without namespaces (last component of topic name). Only topics with this name will be considered when looking for new maps to merge. This topics may be subject to further filtering (see below).
 
-    5.name = ~robot_namespace
-    5.default = `` (empty string)
+    5.name = ~robot_map_updates_topic
+    5.default = `map_updates`
     5.type = string
-    5.desc = Fixed part of robot map topic. You can employ this parameter to further limit which topics will be considered during dynamic lookup for robots. Only topics which contain (anywhere) this string will be considered for lookup. Unlike `robot_map_topic` you are not limited by namespace logic. Topics will be filtered using text-based search. Therefore `robot_namespace` does not need to be ROS namespace, but can contain slashes etc. This must be common part of all robots map topics name (all robots for which you want to merge map).
+    5.desc = Name of robot map updates topic of <<MsgLink(map_msgs/OccupancyGridUpdate)>> without namespaces (last component of topic name). This topic will be always subscribed in the same namespace as `robot_map_topic`. You'll likely need to change this only when you changed `robot_map_topic`. These topics are never considered when searching for new robots.
 
-    6.name = ~merged_map_topic
-    6.default = `map`
+    6.name = ~robot_namespace
+    6.default = `` (empty string)
     6.type = string
-    6.desc = Topic name where merged map will be published.
+    6.desc = Fixed part of robot map topic. You can employ this parameter to further limit which topics will be considered during dynamic lookup for robots. Only topics which contain (anywhere) this string will be considered for lookup. Unlike `robot_map_topic` you are not limited by namespace logic. Topics will be filtered using text-based search. Therefore `robot_namespace` does not need to be ROS namespace, but can contain slashes etc. This must be common part of all robots map topics name (all robots for which you want to merge map).
 
-    7.name = ~world_frame
-    7.default = `world`
+    7.name = ~merged_map_topic
+    7.default = `map`
     7.type = string
-    7.desc = Frame id (in [[tf]] tree) which will be assigned to published merged map. This should be frame where you specified robot initial positions.
+    7.desc = Topic name where merged map will be published.
 
-    8.name = ~merging_rate
-    8.default = `4.0`
-    8.type = double
-    8.desc = Rate in Hz. Basic frequency on which this node discovers new robots, merges their maps and publish merged map. Increase this value if you want faster updates.
+    8.name = ~world_frame
+    8.default = `world`
+    8.type = string
+    8.desc = Frame id (in [[tf]] tree) which will be assigned to published merged map. This should be frame where you specified robot initial positions.
+
+    9.name = ~merging_rate
+    9.default = `4.0`
+    9.type = double
+    9.desc = Rate in Hz. Basic frequency on which this node discovers new robots, merges their maps and publish merged map. Increase this value if you want faster updates.
   }
 }
 }}}
