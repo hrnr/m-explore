@@ -143,9 +143,8 @@ void MapMerging::mapMerging()
   ROS_DEBUG("Map merging started");
 
   {
-    // exclusive locking. we dont map sizes to change during muxing.
+    // exclusive locking. we don't want map sizes to change during muxing.
     std::lock_guard<boost::shared_mutex> lock(merging_mutex_);
-    // TODO: skip empty maps
     occupancy_grid_utils::combineGrids(grid_view_.cbegin(), grid_view_.cend(),
                                        merged_map_);
   }

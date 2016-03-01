@@ -59,7 +59,9 @@ namespace occupancy_grid_utils
 
 /// \brief Combines a set of grids
 ///
-/// The resulting grid's origin will be a translated version of grid 1's origin, with resolution \a resolution
+/// The resulting grid's origin will be a translated version of grid 1's origin, with resolution \a resolution.
+///
+/// All empty grids will be skipped.
 ///
 /// The policy for combination is that for each cell, we look at each grid cell that 
 /// intersects it and consider their values.  Map these to integers, where everything above
@@ -113,6 +115,10 @@ nav_msgs::MapMetaData getCombinedGridInfo (ForwardIt first, ForwardIt last, cons
 
   for (ForwardIt grid_it = first; grid_it != last; ++grid_it) {
     const nav_msgs::OccupancyGrid& grid = *grid_it; // needed to support reference_wrapper
+    if (grid.data.empty()) {
+      // skip empty grids as nothing will merged for them
+      continue;
+    }
     nav_msgs::MapMetaData grid_info = grid.info;
     grid_info.origin = transformPose(trans.inverse(), grid.info.origin);
     if (!(min_x && *min_x < minX(grid_info)))
