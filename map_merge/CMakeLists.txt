@@ -69,5 +69,6 @@ if(CATKIN_ENABLE_TESTING)
 
   # test all launch files
   roslaunch_add_file_check(launch)
+  roslaunch_add_file_check(launch/experiments)
 endif()
 

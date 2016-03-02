@@ -12,4 +12,4 @@
   <param name="init_pose_z" value="0.0"/>
   <param name="init_pose_yaw" value="3.1416"/>
 </group>
-<launch>
+</launch>
