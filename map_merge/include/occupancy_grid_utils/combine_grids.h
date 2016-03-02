@@ -130,7 +130,9 @@ nav_msgs::MapMetaData getCombinedGridInfo (ForwardIt first, ForwardIt last, cons
     if (!(max_y && *max_y > maxY(grid_info)))
       max_y = maxY(grid_info);
   }
-  ROS_ASSERT(min_x && max_x && min_y && max_y);
+  if (!(min_x && max_x && min_y && max_y)) {
+    return info;
+  }
 
   const double dx = *max_x - *min_x;
   const double dy = *max_y - *min_y;
@@ -152,10 +154,19 @@ nav_msgs::MapMetaData getCombinedGridInfo (ForwardIt first, ForwardIt last, cons
 template<typename ForwardIt>
 void combineGrids (ForwardIt first, ForwardIt last, const double resolution, nav_msgs::OccupancyGrid& combined_grid)
 {
+  nav_msgs::MapMetaData grid_info;
+
   if(first == last)
     return;
 
-  combined_grid.info = getCombinedGridInfo(first, last, resolution);
+  // compute size of merged grid
+  grid_info = getCombinedGridInfo(first, last, resolution);
+  // if all grid are empty (zero size) or size could not be computed
+  if (grid_info.width == 0 || grid_info.height == 0) {
+    return;
+  }
+
+  combined_grid.info = grid_info;
   combined_grid.data.resize(combined_grid.info.width*combined_grid.info.height);
   fill(combined_grid.data.begin(), combined_grid.data.end(), -1);
   ROS_DEBUG_NAMED ("combine_grids", "Combining %zu grids", std::distance(first, last));
