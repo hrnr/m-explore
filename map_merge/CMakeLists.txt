@@ -12,6 +12,12 @@ find_package(catkin REQUIRED COMPONENTS
 
 find_package(Boost REQUIRED COMPONENTS thread)
 
+# OpenCV is required for merging without initial positions
+find_package(OpenCV REQUIRED)
+if(OpenCV_VERSION VERSION_LESS "3.0")
+  message(STATUS "This package needs OpenCV >= 3.0")
+endif()
+
 ################################################
 ## Declare ROS messages, services and actions ##
 ################################################
@@ -38,6 +44,7 @@ endif()
 include_directories(
   ${catkin_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}
   include
 )
 
@@ -46,7 +53,7 @@ add_executable(map_merge
   src/combine_grids.cpp
   src/coordinate_conversions.cpp
 )
-target_link_libraries(map_merge ${catkin_LIBRARIES})
+target_link_libraries(map_merge ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
 #############
 ## Install ##
