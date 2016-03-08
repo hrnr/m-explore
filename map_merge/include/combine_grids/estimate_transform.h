@@ -72,7 +72,7 @@ bool estimateGridTransform(ForwardIt first, ForwardIt last)
   /* convert to opencv images. it creates only a view for opencv and does not
    * copy actual data. */
   images.reserve(length);
-  for (ForwardIt it = first; first != last; ++it) {
+  for (ForwardIt it = first; it != last; ++it) {
     nav_msgs::OccupancyGrid& it_ref = *it;  // support reference_wrapper
     // Mat does no support constness in constructor
     images.emplace_back(it_ref.info.height, it_ref.info.width, CV_8SC1,
@@ -81,7 +81,7 @@ bool estimateGridTransform(ForwardIt first, ForwardIt last)
 
   /* find features in images */
   finder = cv::makePtr<cv::detail::OrbFeaturesFinder>();
-  image_features.reserve(length);
+  image_features.reserve(images.size());
   for (cv::Mat& image : images) {
     image_features.emplace_back();
     (*finder)(image, image_features.back());
@@ -95,7 +95,7 @@ bool estimateGridTransform(ForwardIt first, ForwardIt last)
   matcher->collectGarbage();
 
   /* estimate transform */
-  transforms.reserve(length);
+  transforms.reserve(images.size());
   if (!(*estimator)(image_features, pairwise_matches, transforms)) {
     return false;
   }
