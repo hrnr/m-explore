@@ -38,35 +38,43 @@
 #define ESTIMATE_TRANSFORM_H_
 
 #include <vector>
-
-#include <opencv2/core/utility.hpp>
-#include <opencv2/opencv_modules.hpp>
-#include <opencv2/stitching/detail/autocalib.hpp>
-#include <opencv2/stitching/detail/blenders.hpp>
-#include <opencv2/stitching/detail/camera.hpp>
-#include <opencv2/stitching/detail/exposure_compensate.hpp>
-#include <opencv2/stitching/detail/matchers.hpp>
-#include <opencv2/stitching/detail/motion_estimators.hpp>
-#include <opencv2/stitching/detail/seam_finders.hpp>
-#include <opencv2/stitching/detail/util.hpp>
-#include <opencv2/stitching/detail/warpers.hpp>
-#include <opencv2/stitching/warpers.hpp>
+#include <type_traits>
 
 #include <ros/console.h>
 #include <nav_msgs/OccupancyGrid.h>
+
+#include <opencv2/core/utility.hpp>
+
+namespace combine_grids
+{
+template <typename ForwardIt>
+bool estimateGridTransform(ForwardIt first, ForwardIt last);
+
+namespace internal
+{
+/**
+ * @brief Estimates tranformation using opencv stitching pipeline
+ * @details For given images computes transformation, such that all images
+ *transformed makes
+ *
+ * @param images images usable by opencv stitching pipeline
+ * @return [nothing yet]
+ */
+bool opencvEstimateTransform(const std::vector<cv::Mat>& images);
+
+}  // namespace internal
+}  // namespace combine_grids
 
 namespace combine_grids
 {
 template <typename ForwardIt>
 bool estimateGridTransform(ForwardIt first, ForwardIt last)
 {
+  static_assert(
+      std::is_assignable<nav_msgs::OccupancyGrid&, decltype(*first)>::value,
+      "iterators must point to nav_msgs::OccupancyGrid data");
+
   std::vector<cv::Mat> images;
-  std::vector<cv::detail::ImageFeatures> image_features;
-  std::vector<cv::detail::MatchesInfo> pairwise_matches;
-  std::vector<cv::detail::CameraParams> transforms;
-  cv::Ptr<cv::detail::FeaturesFinder> finder;
-  cv::Ptr<cv::detail::FeaturesMatcher> matcher;
-  cv::Ptr<cv::detail::Estimator> estimator;
 
   ROS_DEBUG("estimating transformations between grids");
 
@@ -85,38 +93,7 @@ bool estimateGridTransform(ForwardIt first, ForwardIt last)
                         it_ref.data.data());
   }
 
-  if (images.size() < 2) {
-    return false;
-  }
-
-  /* find features in images */
-  ROS_DEBUG("computing features");
-  finder = cv::makePtr<cv::detail::OrbFeaturesFinder>();
-  image_features.reserve(images.size());
-  for (cv::Mat& image : images) {
-    image_features.emplace_back();
-    (*finder)(image, image_features.back());
-  }
-  finder->collectGarbage();
-
-  /* find corespondent features */
-  // matches only some (5) images, scales better than full pairwise matcher
-  ROS_DEBUG("pairwise matching features");
-  matcher = cv::makePtr<cv::detail::BestOf2NearestRangeMatcher>();
-  (*matcher)(image_features, pairwise_matches);
-  matcher->collectGarbage();
-
-  /* estimate transform */
-  ROS_DEBUG("estimating final transform");
-  estimator = cv::makePtr<cv::detail::HomographyBasedEstimator>();
-  if (!(*estimator)(image_features, pairwise_matches, transforms)) {
-    return false;
-  }
-
-  for (cv::detail::CameraParams& transform : transforms)
-    ROS_DEBUG("TRANSFORM ppx: %f, ppy %f\n", transform.ppx, transform.ppy);
-
-  return true;
+  return internal::opencvEstimateTransform(images);
 }
 
 }  // namespace combine_grids

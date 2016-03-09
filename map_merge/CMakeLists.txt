@@ -52,6 +52,7 @@ add_executable(map_merge
   src/map_merge.cpp
   src/combine_grids.cpp
   src/coordinate_conversions.cpp
+  src/combine_grids/estimate_transform.cpp
 )
 target_link_libraries(map_merge ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
