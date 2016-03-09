@@ -34,6 +34,9 @@
  *
  *********************************************************************/
 
+#ifndef ESTIMATE_TRANSFORM_H_
+#define ESTIMATE_TRANSFORM_H_
+
 #include <vector>
 
 #include <opencv2/core/utility.hpp>
@@ -57,29 +60,37 @@ namespace combine_grids
 template <typename ForwardIt>
 bool estimateGridTransform(ForwardIt first, ForwardIt last)
 {
-  std::size_t length = std::distance(first, last);
   std::vector<cv::Mat> images;
   std::vector<cv::detail::ImageFeatures> image_features;
   std::vector<cv::detail::MatchesInfo> pairwise_matches;
   std::vector<cv::detail::CameraParams> transforms;
   cv::Ptr<cv::detail::FeaturesFinder> finder;
   cv::Ptr<cv::detail::FeaturesMatcher> matcher;
-  cv::Ptr<cv::detail::HomographyBasedEstimator> estimator;
+  cv::Ptr<cv::detail::Estimator> estimator;
 
-  if (length < 2)
-    return false;
+  ROS_DEBUG("estimating transformations between grids");
 
   /* convert to opencv images. it creates only a view for opencv and does not
    * copy actual data. */
-  images.reserve(length);
+  ROS_DEBUG("generating opencv stub images");
+  images.reserve(std::distance(first, last));
   for (ForwardIt it = first; it != last; ++it) {
     nav_msgs::OccupancyGrid& it_ref = *it;  // support reference_wrapper
+    // we need to skip empty grids, does not play well in opencv
+    if (it_ref.data.empty()) {
+      continue;
+    }
     // Mat does no support constness in constructor
-    images.emplace_back(it_ref.info.height, it_ref.info.width, CV_8SC1,
+    images.emplace_back(it_ref.info.height, it_ref.info.width, CV_8UC1,
                         it_ref.data.data());
   }
 
+  if (images.size() < 2) {
+    return false;
+  }
+
   /* find features in images */
+  ROS_DEBUG("computing features");
   finder = cv::makePtr<cv::detail::OrbFeaturesFinder>();
   image_features.reserve(images.size());
   for (cv::Mat& image : images) {
@@ -90,12 +101,14 @@ bool estimateGridTransform(ForwardIt first, ForwardIt last)
 
   /* find corespondent features */
   // matches only some (5) images, scales better than full pairwise matcher
+  ROS_DEBUG("pairwise matching features");
   matcher = cv::makePtr<cv::detail::BestOf2NearestRangeMatcher>();
   (*matcher)(image_features, pairwise_matches);
   matcher->collectGarbage();
 
   /* estimate transform */
-  transforms.reserve(images.size());
+  ROS_DEBUG("estimating final transform");
+  estimator = cv::makePtr<cv::detail::HomographyBasedEstimator>();
   if (!(*estimator)(image_features, pairwise_matches, transforms)) {
     return false;
   }
@@ -105,4 +118,7 @@ bool estimateGridTransform(ForwardIt first, ForwardIt last)
 
   return true;
 }
-}
+
+}  // namespace combine_grids
+
+#endif  // ESTIMATE_TRANSFORM_H_
