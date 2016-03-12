@@ -148,7 +148,7 @@ void MapMerging::mapMerging()
     std::lock_guard<boost::shared_mutex> lock(merging_mutex_);
     occupancy_grid_utils::combineGrids(grid_view_.cbegin(), grid_view_.cend(),
                                        merged_map_);
-    combine_grids::estimateGridTransform(grid_view_.begin(), grid_view_.end());
+    combine_grids::estimateGridTransform(grid_view_.cbegin(), grid_view_.cend());
   }
 
   ROS_DEBUG("all maps merged, publishing");
