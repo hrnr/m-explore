@@ -133,7 +133,8 @@ static void getRTMatrix(const Point2f* a, const Point2f* b, int count, Mat& M,
 }
 
 /* modified version of opencv function */
-Mat estimateRigidTransform(InputArray src1, InputArray src2, bool fullAffine)
+Mat estimateRigidTransform(InputArray src1, InputArray src2,
+                           OutputArray _inliers_mask, bool fullAffine)
 {
   Mat M(2, 3, CV_64F), A = src1.getMat(), B = src2.getMat();
 
@@ -143,7 +144,7 @@ Mat estimateRigidTransform(InputArray src1, InputArray src2, bool fullAffine)
 
   std::vector<Point2f> pA, pB;
   std::vector<size_t> good_idx;
-  // std::vector<uchar> status;
+  Mat inliers_mask;
 
   double scale = 1.;
   size_t i, j, k, k1;
@@ -172,6 +173,13 @@ Mat estimateRigidTransform(InputArray src1, InputArray src2, bool fullAffine)
   size_t count = static_cast<size_t>(vector_size);
 
   good_idx.resize(count);
+  // zero initialize inliers mask
+  if (_inliers_mask.needed()) {
+    _inliers_mask.setTo(Mat::zeros(static_cast<int>(count), 1, CV_8U));
+    inliers_mask = _inliers_mask.getMat();
+  } else {
+    inliers_mask = Mat::zeros(static_cast<int>(count), 1, CV_8U);
+  }
 
   if (count < RANSAC_SIZE0)
     return Mat();
@@ -248,8 +256,10 @@ Mat estimateRigidTransform(InputArray src1, InputArray src2, bool fullAffine)
     for (i = 0, good_count = 0; i < count; i++) {
       if (std::abs(m[0] * pA[i].x + m[1] * pA[i].y + m[2] - pB[i].x) +
               std::abs(m[3] * pA[i].x + m[4] * pA[i].y + m[5] - pB[i].y) <
-          std::max(brect.width, brect.height) * 0.05)
+          std::max(brect.width, brect.height) * 0.05) {
         good_idx[good_count++] = i;
+        inliers_mask.data[i] = true;
+      }
     }
 
     if (good_count >= count * RANSAC_GOOD_RATIO)

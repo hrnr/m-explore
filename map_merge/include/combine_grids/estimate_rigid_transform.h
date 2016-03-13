@@ -89,7 +89,8 @@ when fullAffine=false.
 @sa
 getAffineTransform, getPerspectiveTransform, findHomography
  */
-Mat estimateRigidTransform(InputArray src, InputArray dst, bool fullAffine);
+Mat estimateRigidTransform(InputArray src, InputArray dst,
+                           OutputArray inliers_mask, bool fullAffine);
 
 }  // namespace cv
 
