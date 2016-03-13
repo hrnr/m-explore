@@ -63,9 +63,9 @@ namespace occupancy_grid_utils
 ///
 /// All empty grids will be skipped.
 ///
-/// The policy for combination is that for each cell, we look at each grid cell that 
+/// The policy for combination is that for each cell, we look at each grid cell that
 /// intersects it and consider their values.  Map these to integers, where everything above
-/// OCCUPIED (100) goes to -1.  Then take the max.  If there are no intersecting cells, value is -1. 
+/// OCCUPIED (100) goes to -1.  Then take the max.  If there are no intersecting cells, value is -1.
 ///
 /// Assumes all grids lie on the xy plane, and will fail in weird ways if that's not true
 template<typename ForwardIt>
@@ -78,13 +78,13 @@ void combineGrids (ForwardIt first, ForwardIt last, nav_msgs::OccupancyGrid& res
 /* for backward compatibility */
 
 /// Version of combineGrids that uses shared_ptr
-/// 
+///
 /// you should use combineGrids with raw pointers instead, which saves reference counting
 /// \deprecated
 nav_msgs::OccupancyGrid::Ptr combineGrids(const std::vector<nav_msgs::OccupancyGrid::ConstPtr>& grids, double resolution);
 
 /// Version of combineGrids that uses shared_ptr
-/// 
+///
 /// you should use combineGrids with raw pointers instead, which saves reference counting
 /// \deprecated
 nav_msgs::OccupancyGrid::Ptr combineGrids(const std::vector<nav_msgs::OccupancyGrid::ConstPtr>& grids);
@@ -105,10 +105,14 @@ inline double maxY (const nav_msgs::MapMetaData& info);
 template<typename ForwardIt>
 nav_msgs::MapMetaData getCombinedGridInfo (ForwardIt first, ForwardIt last, const double resolution)
 {
-  ROS_ASSERT (first != last);
   nav_msgs::MapMetaData info;
   info.resolution = resolution;
   tf::Pose trans;
+
+  if(first == last) {
+    return info;
+  }
+
   const nav_msgs::OccupancyGrid& first_ref = *first; // needed to support reference_wrapper
   tf::poseMsgToTF(first_ref.info.origin, trans);
   boost::optional<double> min_x, max_x, min_y, max_y;
@@ -133,18 +137,19 @@ nav_msgs::MapMetaData getCombinedGridInfo (ForwardIt first, ForwardIt last, cons
   if (!(min_x && max_x && min_y && max_y)) {
     return info;
   }
+  // min and max might be egual if we have only 1 grid
+  ROS_ASSERT((*max_x >= *min_x) && (*max_y >= *min_y));
 
   const double dx = *max_x - *min_x;
   const double dy = *max_y - *min_y;
-  ROS_ASSERT ((dx > 0) && (dy > 0));
 
   geometry_msgs::Pose pose_in_grid_frame;
   pose_in_grid_frame.position.x = *min_x;
   pose_in_grid_frame.position.y = *min_y;
   pose_in_grid_frame.orientation.w = 1.0;
   info.origin = transformPose(trans, pose_in_grid_frame);
-  info.height = ceil(dy/info.resolution);
-  info.width = ceil(dx/info.resolution);
+  info.height = std::ceil(dy/info.resolution);
+  info.width = std::ceil(dx/info.resolution);
 
   return info;
 }
