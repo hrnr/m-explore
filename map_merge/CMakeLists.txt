@@ -48,13 +48,20 @@ include_directories(
   include
 )
 
-add_executable(map_merge
-  src/map_merge.cpp
+# we want static linking for now
+add_library(combine_grids STATIC
   src/combine_grids.cpp
   src/coordinate_conversions.cpp
   src/combine_grids/estimate_transform.cpp
+  src/combine_grids/features_matcher.cpp
+  src/combine_grids/estimate_rigid_transform.cpp
 )
-target_link_libraries(map_merge ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+target_link_libraries(combine_grids ${OpenCV_LIBRARIES})
+
+add_executable(map_merge
+  src/map_merge.cpp
+)
+target_link_libraries(map_merge combine_grids ${catkin_LIBRARIES})
 
 #############
 ## Install ##
@@ -70,10 +77,8 @@ install(DIRECTORY launch/
 if(CATKIN_ENABLE_TESTING)
   catkin_add_gtest(combine_grid_tests
     test/test_grid_utils.cpp
-    src/combine_grids.cpp
-    src/coordinate_conversions.cpp
   )
-  target_link_libraries(combine_grid_tests ${catkin_LIBRARIES})
+  target_link_libraries(combine_grid_tests combine_grids ${catkin_LIBRARIES})
 
   # test all launch files
   roslaunch_add_file_check(launch)
