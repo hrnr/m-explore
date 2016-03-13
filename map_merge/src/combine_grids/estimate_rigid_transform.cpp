@@ -173,13 +173,7 @@ Mat estimateRigidTransform(InputArray src1, InputArray src2,
   size_t count = static_cast<size_t>(vector_size);
 
   good_idx.resize(count);
-  // zero initialize inliers mask
-  if (_inliers_mask.needed()) {
-    _inliers_mask.setTo(Mat::zeros(static_cast<int>(count), 1, CV_8U));
-    inliers_mask = _inliers_mask.getMat();
-  } else {
-    inliers_mask = Mat::zeros(static_cast<int>(count), 1, CV_8U);
-  }
+  inliers_mask = Mat::zeros(static_cast<int>(count), 1, CV_8U);
 
   if (count < RANSAC_SIZE0)
     return Mat();
@@ -280,6 +274,11 @@ Mat estimateRigidTransform(InputArray src1, InputArray src2,
   getRTMatrix(&pA[0], &pB[0], static_cast<int>(good_count), M, fullAffine);
   M.at<double>(0, 2) /= scale;
   M.at<double>(1, 2) /= scale;
+
+  // return inliers mask
+  if (_inliers_mask.needed()) {
+    inliers_mask.copyTo(_inliers_mask);
+  }
 
   return M;
 }
