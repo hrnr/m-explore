@@ -51,6 +51,7 @@
 #include <opencv2/video/tracking.hpp>
 
 #include <combine_grids/features_matcher.h>
+#include <combine_grids/transform_estimator.h>
 
 #include <ros/console.h>
 #include <nav_msgs/OccupancyGrid.h>
@@ -71,7 +72,7 @@ bool opencvEstimateTransform(const std::vector<cv::Mat>& images)
   cv::Ptr<cv::detail::FeaturesMatcher> matcher =
       cv::makePtr<internal::AffineBestOf2NearestMatcher>();
   cv::Ptr<cv::detail::Estimator> estimator =
-      cv::makePtr<cv::detail::HomographyBasedEstimator>();
+      cv::makePtr<internal::AffineBasedEstimator>();
 
   if (images.size() < 2) {
     return false;
@@ -96,6 +97,7 @@ bool opencvEstimateTransform(const std::vector<cv::Mat>& images)
 
   /* estimate transform */
   ROS_DEBUG("estimating final transform");
+  // note: currently used estimator never fails
   if (!(*estimator)(image_features, pairwise_matches, transforms)) {
     return false;
   }
@@ -114,12 +116,13 @@ bool opencvEstimateTransform(const std::vector<cv::Mat>& images)
   for (cv::detail::CameraParams& transform : transforms) {
     ROS_DEBUG("TRANSFORM ppx: %f, ppy %f, aspect: %f, focal %f \n",
               transform.ppx, transform.ppy, transform.aspect, transform.focal);
-    ROS_DEBUG("R,K,t:");
+    ROS_DEBUG(
+        "trans x: %f, trans y %f, rot: %f\n", transform.R.at<double>(0, 2),
+        transform.R.at<double>(1, 2),
+        atan2(transform.R.at<double>(0, 1), transform.R.at<double>(1, 1)));
+    ROS_DEBUG("R,t:");
     std::cout << transform.R << std::endl;
-    std::cout << transform.K() << std::endl;
     std::cout << transform.t << std::endl;
-    ROS_DEBUG("trans x: %f, trans y %f", transform.R.at<double>(0, 2),
-              transform.R.at<double>(1, 2));
   }
 
   return true;
