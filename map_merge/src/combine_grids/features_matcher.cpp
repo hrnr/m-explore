@@ -43,6 +43,9 @@
 #include <opencv2/core/utility.hpp>
 #include <opencv2/video/tracking.hpp>
 
+#include <ros/console.h>
+#include <ros/assert.h>
+
 namespace combine_grids
 {
 namespace internal
@@ -53,6 +56,7 @@ void AffineBestOf2NearestMatcher::match(
     const cv::detail::ImageFeatures &features2,
     cv::detail::MatchesInfo &matches_info)
 {
+  ROS_DEBUG("in my matcher.");
   (*impl_)(features1, features2, matches_info);
 
   // Check if it makes sense to find homography
@@ -81,8 +85,20 @@ void AffineBestOf2NearestMatcher::match(
 
   // Find pair-wise motion
   // this is my special modified version of estimateRigidTransform
+  ROS_DEBUG("have %lu matches", matches_info.matches.size());
+  matches_info.H = estimateRigidTransform(src_points, dst_points, true);
+  ROS_DEBUG_STREAM("full affine estimate:\n" << matches_info.H);
   matches_info.H = estimateRigidTransform(src_points, dst_points,
                                           matches_info.inliers_mask, false);
+  ROS_DEBUG_STREAM("my estimate:\n" << matches_info.H);
+
+  // extend H to represent linear tranformation in homogeneous coordinates
+  matches_info.H.push_back(cv::Mat::zeros(1, 3, CV_64F));
+  matches_info.H.at<double>(2, 2) = 1;
+  // we really want it to produce continuous matrix (it is guaranteed in current
+  // implementation)
+  ROS_ASSERT(matches_info.H.isContinuous());
+
   if (matches_info.H.empty() ||
       std::abs(determinant(matches_info.H)) <
           std::numeric_limits<double>::epsilon())
@@ -94,18 +110,20 @@ void AffineBestOf2NearestMatcher::match(
     if (matches_info.inliers_mask[i])
       matches_info.num_inliers++;
 
+  ROS_DEBUG("num_inliers %d", matches_info.num_inliers);
+
   // These coeffs are from paper M. Brown and D. Lowe. "Automatic Panoramic
-  // Image Stitching
-  // using Invariant Features"
+  // Image Stitching using Invariant Features"
   matches_info.confidence =
       matches_info.num_inliers / (8 + 0.3 * matches_info.matches.size());
 
   // Set zero confidence to remove matches between too close images, as they
-  // don't provide
-  // additional information anyway. The threshold was set experimentally.
+  // don't provide additional information anyway. The threshold was set
+  // experimentally.
   matches_info.confidence =
       matches_info.confidence > 3. ? 0. : matches_info.confidence;
 
+  /* TODO check if this can really help in any way */
   // Check if we should try to refine motion
   if (matches_info.num_inliers < num_matches_thresh2_)
     return;
@@ -136,6 +154,16 @@ void AffineBestOf2NearestMatcher::match(
   // Rerun motion estimation on inliers only
   // standard opencv estimateRigidTransform
   matches_info.H = estimateRigidTransform(src_points, dst_points, false);
+  ROS_DEBUG_STREAM("final estimate:\n" << matches_info.H);
+
+  // extend H to represent linear tranformation in homogeneous coordinates
+  matches_info.H.push_back(cv::Mat::zeros(1, 3, CV_64F));
+  matches_info.H.at<double>(2, 2) = 1;
+  // we really want it to produce continuous matrix (it is guaranteed in current
+  // implementation)
+  ROS_ASSERT(matches_info.H.isContinuous());
+
+  ROS_DEBUG_STREAM("extended matrix:\n" << matches_info.H);
 }
 
 }  // namespace internal
