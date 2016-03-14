@@ -45,5 +45,69 @@ namespace combine_grids
 {
 namespace internal
 {
+/**
+ * @brief Old-style functor calculating final tranformation related to reference
+ *frame
+ *
+ */
+class CalcAffineTransform
+{
+public:
+  CalcAffineTransform(
+      int _num_images,
+      const std::vector<cv::detail::MatchesInfo> &_pairwise_matches,
+      std::vector<cv::detail::CameraParams> &_cameras)
+    : num_images(_num_images)
+    , pairwise_matches(&_pairwise_matches[0])
+    , cameras(&_cameras[0])
+  {
+  }
+
+  void operator()(const cv::detail::GraphEdge &edge)
+  {
+    int pair_idx = edge.from * num_images + edge.to;
+
+    ROS_DEBUG("computing transform, from %d, to %d, pair_idx %d", edge.from,
+              edge.to, pair_idx);
+
+    ROS_DEBUG_STREAM("cameras[edge.from]:\n" << cameras[edge.from].R);
+    ROS_DEBUG_STREAM("H:\n" << pairwise_matches[pair_idx].H);
+
+    cameras[edge.to].R = cameras[edge.from].R * pairwise_matches[pair_idx].H;
+  }
+
+private:
+  int num_images;
+  const cv::detail::MatchesInfo *pairwise_matches;
+  cv::detail::CameraParams *cameras;
+};
+
+bool AffineBasedEstimator::estimate(
+    const std::vector<cv::detail::ImageFeatures> &features,
+    const std::vector<cv::detail::MatchesInfo> &pairwise_matches,
+    std::vector<cv::detail::CameraParams> &cameras)
+{
+  ROS_DEBUG("AffineBasedEstimator: have %lu pairwise matches.",
+            pairwise_matches.size());
+
+  cameras.resize(features.size());
+  const int num_images = static_cast<int>(features.size());
+
+  // find maximum spaning tree on pairwise matches
+  cv::detail::Graph span_tree;
+  std::vector<int> span_tree_centers;
+  // function from motion estimators, uses number of inliers as weights
+  findMaxSpanningTree(num_images, pairwise_matches, span_tree,
+                      span_tree_centers);
+
+  ROS_DEBUG("constructed spanning tree with %d vertices",
+            span_tree.numVertices());
+
+  // compute final transform by chaining H together
+  span_tree.walkBreadthFirst(
+      span_tree_centers[0],
+      CalcAffineTransform(num_images, pairwise_matches, cameras));
+  return true;
+}
 }  // namespace internal
 }  // namespace combine_grids
