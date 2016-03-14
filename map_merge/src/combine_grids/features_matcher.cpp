@@ -56,15 +56,17 @@ void AffineBestOf2NearestMatcher::match(
     const cv::detail::ImageFeatures &features2,
     cv::detail::MatchesInfo &matches_info)
 {
-  ROS_DEBUG("in my matcher.");
   (*impl_)(features1, features2, matches_info);
+
+  ROS_DEBUG("AffineMatcher: have %lu matches", matches_info.matches.size());
 
   // Check if it makes sense to find homography
   if (matches_info.matches.size() < static_cast<size_t>(num_matches_thresh1_))
     return;
 
   // Construct point-point correspondences for homography estimation
-  // centered to the image center!
+  // Points are centered s.t. image center is (0,0). This is similar to other
+  // matchers a shows better results in practice (numerical stability?).
   cv::Mat src_points(1, static_cast<int>(matches_info.matches.size()),
                      CV_32FC2);
   cv::Mat dst_points(1, static_cast<int>(matches_info.matches.size()),
@@ -85,24 +87,19 @@ void AffineBestOf2NearestMatcher::match(
 
   // Find pair-wise motion
   // this is my special modified version of estimateRigidTransform
-  ROS_DEBUG("have %lu matches", matches_info.matches.size());
-  matches_info.H = estimateRigidTransform(src_points, dst_points, true);
-  ROS_DEBUG_STREAM("full affine estimate:\n" << matches_info.H);
   matches_info.H = estimateRigidTransform(src_points, dst_points,
                                           matches_info.inliers_mask, false);
-  ROS_DEBUG_STREAM("my estimate:\n" << matches_info.H);
+  ROS_DEBUG_STREAM("estimate:\n" << matches_info.H);
 
   // extend H to represent linear tranformation in homogeneous coordinates
   matches_info.H.push_back(cv::Mat::zeros(1, 3, CV_64F));
   matches_info.H.at<double>(2, 2) = 1;
-  // we really want it to produce continuous matrix (it is guaranteed in current
-  // implementation)
-  ROS_ASSERT(matches_info.H.isContinuous());
 
   if (matches_info.H.empty() ||
       std::abs(determinant(matches_info.H)) <
-          std::numeric_limits<double>::epsilon())
+          std::numeric_limits<double>::epsilon()) {
     return;
+  }
 
   // Find number of inliers
   matches_info.num_inliers = 0;
@@ -117,53 +114,16 @@ void AffineBestOf2NearestMatcher::match(
   matches_info.confidence =
       matches_info.num_inliers / (8 + 0.3 * matches_info.matches.size());
 
+  /* we don't want any cuttof for merging maps. TODO: allow to set this in
+   * constructor. */
   // Set zero confidence to remove matches between too close images, as they
   // don't provide additional information anyway. The threshold was set
   // experimentally.
-  matches_info.confidence =
-      matches_info.confidence > 3. ? 0. : matches_info.confidence;
+  // matches_info.confidence =
+  // matches_info.confidence > 3. ? 0. : matches_info.confidence;
 
-  /* TODO check if this can really help in any way */
-  // Check if we should try to refine motion
-  if (matches_info.num_inliers < num_matches_thresh2_)
-    return;
-
-  // Construct point-point correspondences for inliers only
-  src_points.create(1, matches_info.num_inliers, CV_32FC2);
-  dst_points.create(1, matches_info.num_inliers, CV_32FC2);
-  int inlier_idx = 0;
-  for (size_t i = 0; i < matches_info.matches.size(); ++i) {
-    if (!matches_info.inliers_mask[i])
-      continue;
-
-    const cv::DMatch &m = matches_info.matches[i];
-
-    cv::Point2f p = features1.keypoints[static_cast<size_t>(m.queryIdx)].pt;
-    p.x -= features1.img_size.width * 0.5f;
-    p.y -= features1.img_size.height * 0.5f;
-    src_points.at<cv::Point2f>(0, inlier_idx) = p;
-
-    p = features2.keypoints[static_cast<size_t>(m.trainIdx)].pt;
-    p.x -= features2.img_size.width * 0.5f;
-    p.y -= features2.img_size.height * 0.5f;
-    dst_points.at<cv::Point2f>(0, inlier_idx) = p;
-
-    inlier_idx++;
-  }
-
-  // Rerun motion estimation on inliers only
-  // standard opencv estimateRigidTransform
-  matches_info.H = estimateRigidTransform(src_points, dst_points, false);
-  ROS_DEBUG_STREAM("final estimate:\n" << matches_info.H);
-
-  // extend H to represent linear tranformation in homogeneous coordinates
-  matches_info.H.push_back(cv::Mat::zeros(1, 3, CV_64F));
-  matches_info.H.at<double>(2, 2) = 1;
-  // we really want it to produce continuous matrix (it is guaranteed in current
-  // implementation)
-  ROS_ASSERT(matches_info.H.isContinuous());
-
-  ROS_DEBUG_STREAM("extended matrix:\n" << matches_info.H);
+  /* Unlike other matchers it makes no sense to rerun estimation on liers only.
+   * estimateRigidTransform already did this for us. So we are done here. */
 }
 
 }  // namespace internal
