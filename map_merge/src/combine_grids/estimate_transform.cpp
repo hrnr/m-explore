@@ -36,33 +36,21 @@
 
 #include <combine_grids/estimate_transform.h>
 
-#include <opencv2/core/utility.hpp>
-#include <opencv2/stitching/detail/autocalib.hpp>
-#include <opencv2/stitching/detail/blenders.hpp>
-#include <opencv2/stitching/detail/camera.hpp>
-#include <opencv2/stitching/detail/exposure_compensate.hpp>
-#include <opencv2/stitching/detail/matchers.hpp>
-#include <opencv2/stitching/detail/motion_estimators.hpp>
-#include <opencv2/stitching/detail/seam_finders.hpp>
-#include <opencv2/stitching/detail/util.hpp>
-#include <opencv2/stitching/detail/warpers.hpp>
-#include <opencv2/stitching/warpers.hpp>
+#include <cmath>
 
-#include <opencv2/video/tracking.hpp>
+#include <opencv2/core/utility.hpp>
+
+#include <ros/console.h>
 
 #include <combine_grids/features_matcher.h>
 #include <combine_grids/transform_estimator.h>
-
-#include <ros/console.h>
-#include <nav_msgs/OccupancyGrid.h>
-
-#include <iostream>
 
 namespace combine_grids
 {
 namespace internal
 {
-bool opencvEstimateTransform(const std::vector<cv::Mat>& images)
+bool opencvEstimateTransform(const std::vector<cv::Mat>& images,
+                             std::vector<cv::Mat>& final_transforms)
 {
   std::vector<cv::detail::ImageFeatures> image_features;
   std::vector<cv::detail::MatchesInfo> pairwise_matches;
@@ -93,8 +81,6 @@ bool opencvEstimateTransform(const std::vector<cv::Mat>& images)
   (*matcher)(image_features, pairwise_matches);
   matcher->collectGarbage();
 
-  ROS_DEBUG("matching ended.");
-
   /* estimate transform */
   ROS_DEBUG("estimating final transform");
   // note: currently used estimator never fails
@@ -102,30 +88,23 @@ bool opencvEstimateTransform(const std::vector<cv::Mat>& images)
     return false;
   }
 
-  for (auto& match : pairwise_matches) {
-    ROS_DEBUG("MATCH: src_id %d, dst_id %d, confidence %f\n", match.src_img_idx,
-              match.dst_img_idx, match.confidence);
-    ROS_DEBUG("matcher estimated H:");
-    std::cout << match.H << std::endl;
-    if (!match.H.empty())
-      ROS_DEBUG("trans x: %f, trans y %f, rot %f\n", match.H.at<double>(0, 2),
-                match.H.at<double>(1, 2),
-                atan2(match.H.at<double>(0, 1), match.H.at<double>(1, 1)));
-  }
-
   for (cv::detail::CameraParams& transform : transforms) {
-    ROS_DEBUG("TRANSFORM ppx: %f, ppy %f, aspect: %f, focal %f \n",
-              transform.ppx, transform.ppy, transform.aspect, transform.focal);
-    ROS_DEBUG(
-        "trans x: %f, trans y %f, rot: %f\n", transform.R.at<double>(0, 2),
-        transform.R.at<double>(1, 2),
-        atan2(transform.R.at<double>(0, 1), transform.R.at<double>(1, 1)));
-    ROS_DEBUG("R,t:");
-    std::cout << transform.R << std::endl;
-    std::cout << transform.t << std::endl;
+    if (!transform.R.empty())
+      ROS_DEBUG("TRANSFORM: trans x: %f, trans y %f, rot: %f\n",
+                transform.R.at<double>(0, 2), transform.R.at<double>(1, 2),
+                std::atan2(transform.R.at<double>(0, 1),
+                           transform.R.at<double>(1, 1)));
   }
 
-  return true;
+  final_transforms.clear();
+  final_transforms.reserve(transforms.size());
+  bool have_all_estimates = true;
+  for (auto& transform : transforms) {
+    final_transforms.emplace_back(transform.R);
+    have_all_estimates &= transform.R.empty();
+  }
+
+  return have_all_estimates;
 }
 }  // namespace internal
 }  // namespace combine_grids

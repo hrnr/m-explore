@@ -39,16 +39,37 @@
 
 #include <vector>
 #include <type_traits>
+#include <cmath>
 
 #include <ros/console.h>
+#include <ros/assert.h>
 #include <nav_msgs/OccupancyGrid.h>
+#include <geometry_msgs/Pose.h>
+#include <tf/transform_datatypes.h>
 
 #include <opencv2/core/utility.hpp>
 
 namespace combine_grids
 {
+/**
+ * @brief Estimates transformation between grids when initial positions of grids
+ *in the world are unknown
+ * @details Uses sophisticated algorithm based on image processing to estimate
+ *transformation between grids. Transformations are returned through container
+ *in form of `geometry_msgs::Pose`. Output poses can be interpreted as starting
+ *point of grid in the world.
+ *
+ *Note: grids are not modified in any way. Esp. their origins are unchanged.
+ *
+ * @param grids_begin,grids_end the range of input grids
+ * @param transforms_begin,transforms_end the range of output poses
+ * @return true if all transforms were sucessfuly estimated. If transformation
+ *could not be established for given grid empty Pose will be set in trasforms.
+ */
 template <typename ForwardIt>
-bool estimateGridTransform(ForwardIt first, ForwardIt last);
+bool estimateGridTransform(ForwardIt grids_begin, ForwardIt grids_end,
+                           ForwardIt transforms_begin,
+                           ForwardIt transforms_end);
 
 namespace internal
 {
@@ -58,31 +79,48 @@ namespace internal
  *transformed makes
  *
  * @param images images usable by opencv stitching pipeline
- * @return [nothing yet]
+ * @param transforms estimated trasforms
+ * @return true if all transformations were successfully estimated. false if
+ *some of the transformations could not be estimated or error occured during
+ *estimation.
  */
-bool opencvEstimateTransform(const std::vector<cv::Mat>& images);
+bool opencvEstimateTransform(const std::vector<cv::Mat>& images,
+                             std::vector<cv::Mat>& transforms);
 
 }  // namespace internal
 }  // namespace combine_grids
 
+/* implementation */
+
 namespace combine_grids
 {
 template <typename ForwardIt>
-bool estimateGridTransform(ForwardIt first, ForwardIt last)
+bool estimateGridTransform(ForwardIt grids_begin, ForwardIt grids_end,
+                           ForwardIt transforms_begin, ForwardIt transforms_end)
 {
-  static_assert(
-      std::is_assignable<nav_msgs::OccupancyGrid&, decltype(*first)>::value,
-      "iterators must point to nav_msgs::OccupancyGrid data");
+  static_assert(std::is_assignable<nav_msgs::OccupancyGrid&,
+                                   decltype(*grids_begin)>::value,
+                "grids_begin must point to nav_msgs::OccupancyGrid data");
+
+  static_assert(std::is_assignable<geometry_msgs::Pose&,
+                                   decltype(*transforms_begin)>::value,
+                "transforms_begin must point to geometry_msgs::Pose data");
+
+  ROS_ASSERT_MSG(std::distance(grids_begin, grids_end) ==
+                     std::distance(transforms_begin, transforms_end),
+                 "tranformations must have the same size as occupancy grids. "
+                 "Did you allocated anough space for them?");
 
   std::vector<cv::Mat> images;
+  std::vector<cv::Mat> transforms;
 
   ROS_DEBUG("estimating transformations between grids");
 
   /* convert to opencv images. it creates only a view for opencv and does not
    * copy actual data. */
   ROS_DEBUG("generating opencv stub images");
-  images.reserve(std::distance(first, last));
-  for (ForwardIt it = first; it != last; ++it) {
+  images.reserve(std::distance(grids_begin, grids_end));
+  for (ForwardIt it = grids_begin; it != grids_end; ++it) {
     nav_msgs::OccupancyGrid& it_ref = *it;  // support reference_wrapper
     // we need to skip empty grids, does not play well in opencv
     if (it_ref.data.empty()) {
@@ -93,7 +131,30 @@ bool estimateGridTransform(ForwardIt first, ForwardIt last)
                         it_ref.data.data());
   }
 
-  return internal::opencvEstimateTransform(images);
+  bool success = internal::opencvEstimateTransform(images, transforms);
+
+  auto it = transforms_begin;
+  for (auto& transform : transforms) {
+    geometry_msgs::Pose& output_transform = *it;  // support reference_wrapper
+    if (transform.empty()) {
+      // empty means transformation could not be found
+      output_transform = geometry_msgs::Pose();
+    } else {
+      double translation_x = transform.at<double>(0, 2);
+      double translation_y = transform.at<double>(1, 2);
+      double rotation_rad =
+          std::atan2(transform.at<double>(0, 1), transform.at<double>(1, 1));
+
+      output_transform.position.x = translation_x;
+      output_transform.position.y = translation_y;
+      output_transform.position.z = 0;
+      output_transform.orientation =
+          tf::createQuaternionMsgFromYaw(rotation_rad);
+    }
+    ++it;
+  }
+
+  return success;
 }
 
 }  // namespace combine_grids
