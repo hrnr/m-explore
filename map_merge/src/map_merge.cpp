@@ -57,6 +57,8 @@ MapMerging::MapMerging()
   std::string merged_map_topic;
 
   private_nh.param("merging_rate", merging_rate_, 4.0);
+  private_nh.param("discovery_rate", discovery_rate_, 0.05);
+  private_nh.param("estimation_rate", estimation_rate_, 0.5);
   private_nh.param<std::string>("robot_map_topic", robot_map_topic_, "map");
   private_nh.param<std::string>("robot_map_updates_topic",
                                 robot_map_updates_topic_, "map_updates");
@@ -76,6 +78,8 @@ MapMerging::MapMerging()
  */
 void MapMerging::topicSubscribing()
 {
+  ROS_DEBUG("Robot discovery started.");
+
   ros::master::V_TopicInfo topic_infos;
   ros::master::getTopics(topic_infos);
 
@@ -141,14 +145,13 @@ void MapMerging::topicSubscribing()
  */
 void MapMerging::mapMerging()
 {
-  ROS_DEBUG("Map merging started");
+  ROS_DEBUG("Map merging started.");
 
   {
     // exclusive locking. we don't want map sizes to change during muxing.
     std::lock_guard<boost::shared_mutex> lock(merging_mutex_);
     occupancy_grid_utils::combineGrids(grid_view_.cbegin(), grid_view_.cend(),
                                        merged_map_);
-    combine_grids::estimateGridTransform(grid_view_.cbegin(), grid_view_.cend());
   }
 
   ROS_DEBUG("all maps merged, publishing");
@@ -156,6 +159,11 @@ void MapMerging::mapMerging()
   merged_map_.info.map_load_time = now;
   merged_map_.header.stamp = now;
   merged_map_publisher_.publish(merged_map_);
+}
+
+void MapMerging::poseEstimation()
+{
+  ROS_DEBUG("Grid pose estimation started.");
 }
 
 void MapMerging::fullMapUpdate(const nav_msgs::OccupancyGrid::ConstPtr& msg,
@@ -303,12 +311,29 @@ bool MapMerging::getInitPose(const std::string& name, geometry_msgs::Pose& pose)
 /*
  * execute()
  */
-void MapMerging::execute()
+void MapMerging::executemapMerging()
 {
   ros::Rate r(merging_rate_);
   while (node_.ok()) {
-    topicSubscribing();
     mapMerging();
+    r.sleep();
+  }
+}
+
+void MapMerging::executetopicSubscribing()
+{
+  ros::Rate r(discovery_rate_);
+  while (node_.ok()) {
+    topicSubscribing();
+    r.sleep();
+  }
+}
+
+void MapMerging::executeposeEstimation()
+{
+  ros::Rate r(estimation_rate_);
+  while (node_.ok()) {
+    poseEstimation();
     r.sleep();
   }
 }
@@ -319,9 +344,13 @@ void MapMerging::execute()
 void MapMerging::spin()
 {
   ros::spinOnce();
-  std::thread t([this]() { execute(); });
+  std::thread merging_thr([this]() { executemapMerging(); });
+  std::thread subscribing_thr([this]() { executetopicSubscribing(); });
+  std::thread estimation_thr([this]() { executeposeEstimation(); });
   ros::spin();
-  t.join();
+  merging_thr.join();
+  subscribing_thr.join();
+  estimation_thr.join();
 }
 
 }  // namespace map_merge

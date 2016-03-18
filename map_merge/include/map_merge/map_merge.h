@@ -69,6 +69,8 @@ private:
 
   /* parameters */
   double merging_rate_;
+  double discovery_rate_;
+  double estimation_rate_;
   std::string robot_map_topic_;
   std::string robot_map_updates_topic_;
   std::string robot_namespace_;
@@ -101,10 +103,17 @@ public:
   MapMerging();
 
   void spin();
-  void execute();
+  void executetopicSubscribing();
+  void executemapMerging();
+  void executeposeEstimation();
 
   void topicSubscribing();
   void mapMerging();
+  /**
+   * @brief Estimates initial positions of grids
+   * @details Relevant only if initial poses are not known
+   */
+  void poseEstimation();
 };
 
 }  // namespace map_merge
