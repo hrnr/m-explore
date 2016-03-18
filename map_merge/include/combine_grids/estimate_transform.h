@@ -59,17 +59,20 @@ namespace combine_grids
  *in form of `geometry_msgs::Pose`. Output poses can be interpreted as starting
  *point of grid in the world.
  *
+ *Output range (transforms) must have at least the size of input range (grids).
+ *Typically you want them to have the same size.
+ *
  *Note: grids are not modified in any way. Esp. their origins are unchanged.
  *
  * @param grids_begin,grids_end the range of input grids
- * @param transforms_begin,transforms_end the range of output poses
+ * @param transforms_begin the beginning of the destination range for estimated
+ *transforms
  * @return true if all transforms were sucessfuly estimated. If transformation
  *could not be established for given grid empty Pose will be set in trasforms.
  */
-template <typename ForwardIt>
-bool estimateGridTransform(ForwardIt grids_begin, ForwardIt grids_end,
-                           ForwardIt transforms_begin,
-                           ForwardIt transforms_end);
+template <typename InputIt, typename OutputIt>
+bool estimateGridTransform(InputIt grids_begin, InputIt grids_end,
+                           OutputIt transforms_begin);
 
 namespace internal
 {
@@ -94,9 +97,9 @@ bool opencvEstimateTransform(const std::vector<cv::Mat>& images,
 
 namespace combine_grids
 {
-template <typename ForwardIt>
-bool estimateGridTransform(ForwardIt grids_begin, ForwardIt grids_end,
-                           ForwardIt transforms_begin, ForwardIt transforms_end)
+template <typename InputIt, typename OutputIt>
+bool estimateGridTransform(InputIt grids_begin, InputIt grids_end,
+                           OutputIt transforms_begin)
 {
   static_assert(std::is_assignable<nav_msgs::OccupancyGrid&,
                                    decltype(*grids_begin)>::value,
@@ -105,11 +108,6 @@ bool estimateGridTransform(ForwardIt grids_begin, ForwardIt grids_end,
   static_assert(std::is_assignable<geometry_msgs::Pose&,
                                    decltype(*transforms_begin)>::value,
                 "transforms_begin must point to geometry_msgs::Pose data");
-
-  ROS_ASSERT_MSG(std::distance(grids_begin, grids_end) ==
-                     std::distance(transforms_begin, transforms_end),
-                 "tranformations must have the same size as occupancy grids. "
-                 "Did you allocated anough space for them?");
 
   std::vector<cv::Mat> images;
   std::vector<cv::Mat> transforms;
@@ -120,7 +118,7 @@ bool estimateGridTransform(ForwardIt grids_begin, ForwardIt grids_end,
    * copy actual data. */
   ROS_DEBUG("generating opencv stub images");
   images.reserve(std::distance(grids_begin, grids_end));
-  for (ForwardIt it = grids_begin; it != grids_end; ++it) {
+  for (InputIt it = grids_begin; it != grids_end; ++it) {
     nav_msgs::OccupancyGrid& it_ref = *it;  // support reference_wrapper
     // we need to skip empty grids, does not play well in opencv
     if (it_ref.data.empty()) {
