@@ -59,6 +59,7 @@ MapMerging::MapMerging()
   private_nh.param("merging_rate", merging_rate_, 4.0);
   private_nh.param("discovery_rate", discovery_rate_, 0.05);
   private_nh.param("estimation_rate", estimation_rate_, 0.5);
+  private_nh.param("known_init_poses", have_initial_poses_, true);
   private_nh.param<std::string>("robot_map_topic", robot_map_topic_, "map");
   private_nh.param<std::string>("robot_map_updates_topic",
                                 robot_map_updates_topic_, "map_updates");
@@ -100,17 +101,24 @@ void MapMerging::topicSubscribing()
       continue;
     }
 
-    if (!getInitPose(robot_name, init_pose)) {
-      ROS_WARN("couldn't get initial position for robot [%s]\n"
+    if (have_initial_poses_ && !getInitPose(robot_name, init_pose)) {
+      ROS_WARN("Couldn't get initial position for robot [%s]\n"
                "did you defined parameters map_merge/init_pose_[xyz]? in robot "
-               "namespace?",
+               "namespace? If you want to run merging without known initial "
+               "positions of robots please set `known_init_poses` parameter "
+               "to false. See relavant documentation for details.",
                robot_name.c_str());
       continue;
     }
 
     ROS_INFO("adding robot [%s] to system", robot_name.c_str());
+    // we don't need locking here, because: 1) this is the only place we pushing
+    // to list. 2) Nobody is ever iterating over this list. 3) It is
+    // iterator-safe to push to this list, so nobody's pointers (used in
+    // callback) will be invalidated.
     maps_.emplace_front();
     PosedMap& map = maps_.front();
+    // no locking here. robots_ are used only in this procedure
     robots_.insert({robot_name, &map});
     map.initial_pose = init_pose;
     {
@@ -331,6 +339,9 @@ void MapMerging::executetopicSubscribing()
 
 void MapMerging::executeposeEstimation()
 {
+  if (have_initial_poses_)
+    return;
+
   ros::Rate r(estimation_rate_);
   while (node_.ok()) {
     poseEstimation();
@@ -348,9 +359,9 @@ void MapMerging::spin()
   std::thread subscribing_thr([this]() { executetopicSubscribing(); });
   std::thread estimation_thr([this]() { executeposeEstimation(); });
   ros::spin();
+  estimation_thr.join();
   merging_thr.join();
   subscribing_thr.join();
-  estimation_thr.join();
 }
 
 }  // namespace map_merge

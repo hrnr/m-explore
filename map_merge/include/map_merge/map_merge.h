@@ -74,6 +74,7 @@ private:
   std::string robot_map_topic_;
   std::string robot_map_updates_topic_;
   std::string robot_namespace_;
+  bool have_initial_poses_;
 
   /* publisher */
   nav_msgs::OccupancyGrid merged_map_;
