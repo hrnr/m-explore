@@ -70,8 +70,8 @@ namespace combine_grids
  * @return true if all transforms were sucessfuly estimated. If transformation
  *could not be established for given grid empty Pose will be set in trasforms.
  */
-template <typename InputIt, typename OutputIt>
-bool estimateGridTransform(InputIt grids_begin, InputIt grids_end,
+template <typename ForwardIt, typename OutputIt>
+bool estimateGridTransform(ForwardIt grids_begin, ForwardIt grids_end,
                            OutputIt transforms_begin);
 
 namespace internal
@@ -97,8 +97,8 @@ bool opencvEstimateTransform(const std::vector<cv::Mat>& images,
 
 namespace combine_grids
 {
-template <typename InputIt, typename OutputIt>
-bool estimateGridTransform(InputIt grids_begin, InputIt grids_end,
+template <typename ForwardIt, typename OutputIt>
+bool estimateGridTransform(ForwardIt grids_begin, ForwardIt grids_end,
                            OutputIt transforms_begin)
 {
   static_assert(std::is_assignable<nav_msgs::OccupancyGrid&,
@@ -118,7 +118,7 @@ bool estimateGridTransform(InputIt grids_begin, InputIt grids_end,
    * copy actual data. */
   ROS_DEBUG("generating opencv stub images");
   images.reserve(std::distance(grids_begin, grids_end));
-  for (InputIt it = grids_begin; it != grids_end; ++it) {
+  for (ForwardIt it = grids_begin; it != grids_end; ++it) {
     nav_msgs::OccupancyGrid& it_ref = *it;  // support reference_wrapper
     // we need to skip empty grids, does not play well in opencv
     if (it_ref.data.empty()) {
@@ -131,9 +131,12 @@ bool estimateGridTransform(InputIt grids_begin, InputIt grids_end,
 
   bool success = internal::opencvEstimateTransform(images, transforms);
 
-  auto it = transforms_begin;
+  auto transform_it = transforms_begin;
+  auto grid_it = grids_begin;
   for (auto& transform : transforms) {
-    geometry_msgs::Pose& output_transform = *it;  // support reference_wrapper
+    nav_msgs::OccupancyGrid& grid = *grid_it;  // support reference_wrapper
+    geometry_msgs::Pose& output_transform =
+        *transform_it;  // support reference_wrapper
     if (transform.empty()) {
       // empty means transformation could not be found
       output_transform = geometry_msgs::Pose();
@@ -143,13 +146,17 @@ bool estimateGridTransform(InputIt grids_begin, InputIt grids_end,
       double rotation_rad =
           std::atan2(transform.at<double>(0, 1), transform.at<double>(1, 1));
 
-      output_transform.position.x = translation_x;
-      output_transform.position.y = translation_y;
+      /* transformation was computed in pixels, we need to convert to meters
+       * (map resolution). also we want to compesate this trasformation so we
+       * need to use oposite values. */
+      output_transform.position.x = -1. * translation_x * grid.info.resolution;
+      output_transform.position.y = -1. * translation_y * grid.info.resolution;
       output_transform.position.z = 0;
       output_transform.orientation =
-          tf::createQuaternionMsgFromYaw(rotation_rad);
+          tf::createQuaternionMsgFromYaw(-1. * rotation_rad);
     }
-    ++it;
+    ++grid_it;
+    ++transform_it;
   }
 
   return success;
