@@ -82,14 +82,16 @@ void MapMerging::topicSubscribing()
   ROS_DEBUG("Robot discovery started.");
 
   ros::master::V_TopicInfo topic_infos;
+  geometry_msgs::Pose init_pose;
+  std::string robot_name;
+  std::string map_topic;
+  std::string map_updates_topic;
+
   ros::master::getTopics(topic_infos);
+  // default msg constructor does no properly initialize quaternion
+  tf::quaternionTFToMsg(tf::createIdentityQuaternion(), init_pose.orientation);
 
   for (const auto& topic : topic_infos) {
-    geometry_msgs::Pose init_pose;
-    std::string robot_name;
-    std::string map_topic;
-    std::string map_updates_topic;
-
     // we check only map topic
     if (!isRobotMapTopic(topic)) {
       continue;
