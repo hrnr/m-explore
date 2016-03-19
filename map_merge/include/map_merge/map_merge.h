@@ -86,6 +86,8 @@ private:
   std::forward_list<PosedMap> maps_;
   // does not own. view of only grids from PosedMaps for merging
   std::vector<std::reference_wrapper<nav_msgs::OccupancyGrid>> grid_view_;
+  // does not own. view of only to poses for position estimation
+  std::vector<std::reference_wrapper<geometry_msgs::Pose>> pose_view_;
   // this must be locked exclusively when modifying grid_view_ or changing
   // metadata (esp. size!) of OccupancyGrids inside. This could otherwise break
   // horribly because merging algorithm needs to compute merged map size first.

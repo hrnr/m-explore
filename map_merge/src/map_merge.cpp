@@ -127,6 +127,7 @@ void MapMerging::topicSubscribing()
       // with map merging as all iterators may be invalidated for grid_view_
       boost::shared_lock<boost::shared_mutex> lock(merging_mutex_);
       grid_view_.emplace_back(map.map);
+      pose_view_.emplace_back(map.initial_pose);
     }
 
     map_topic = ros::names::append(robot_name, robot_map_topic_);
@@ -172,6 +173,15 @@ void MapMerging::mapMerging()
 void MapMerging::poseEstimation()
 {
   ROS_DEBUG("Grid pose estimation started.");
+  // exclusive locking. we don't want map sizes to change when finding features.
+  // Although this could run simultaneously with merging, we don't currently do
+  // that. Also could be improved to lock only when looking for features.
+  std::lock_guard<boost::shared_mutex> lock(merging_mutex_);
+
+  // will write new pose estimations to initial poses. this initial poses will
+  // be used on the next update for merging.
+  combine_grids::estimateGridTransform(grid_view_.cbegin(), grid_view_.cend(),
+                                       pose_view_.begin());
 }
 
 void MapMerging::fullMapUpdate(const nav_msgs::OccupancyGrid::ConstPtr& msg,
