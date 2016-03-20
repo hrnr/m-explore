@@ -21,9 +21,23 @@ If your run your robots under multiple ROS masters you need to run your own way 
 
 To make this dynamic behaviour possible there are some constrains placed on robots. First all robots must publish map under `<robot_namespace>/map`, where topic name (`map`) is configurable, but must be same for all robots. For each robot `<robot_namespace>` will be of cause different.
 
-Currently map merging algorithm supports only merging maps with known initial positions of the robots. Therefore you need to provide initial position for each robot. You need to provide set of `<robot_namespace>/map_merge/init_pose` parameters. These positions should be in `world_frame`. See [[#ROS API]].
+This node support merging maps with known initial positions of the robots or without. See below for details.
 
-Another merging algorithm which don't require known initial positions may be added in the future. Then those parameters will be optional.
+== Merging modes ==
+
+Two merging modes are currently supported as orthogonal options. If you know initial positions of robots you may preferably use the first mode and get exact results (rigid transformation will be computed according to initial positions). If you don't know robot's starting points you are still able to use the second mode where transformation between grids will be determined using heuristic algorithm. You can choose between these two modes using the `known_init_poses` parameter.
+
+=== merging with known initial positions ===
+
+This is preferred mode whenever you are able to determine exact starting point for each robot. You need to provide initial position for each robot. You need to provide set of `<robot_namespace>/map_merge/init_pose` parameters. These positions should be in `world_frame`. See [[#ROS API]].
+
+In this merging these parameters are mandatory. If any of the required parameters is missing robot won't be considered for merging (you will get warning with name of affected robot).
+
+=== merging without known initial positions ===
+
+If you can't provide initial poses for robots this mode has minimal configuration requirements. You need to provide only map topic for each robot. Transformation between grids is estimated by feature-matching algorithm and therefore requires grids to have sufficient amount of overlapping space to make a high-probability match. If grids don't have enough overlapping space to make a solid match, merged map can differ greatly from physical situation.
+
+Estimating transforms between grids is cpu-intesive so you might want to tune `estimation_rate` parameter to run re-estimation less often if it causes any troubles.
 
 == ROS API ==
 {{{
@@ -50,7 +64,7 @@ sub {
 param {
   group.0 {
     name = ROBOT PARAMETERS
-    desc = Parameters that should be defined in the namespace of each robot. Without these parameters robots won't be considered for merging.
+    desc = Parameters that should be defined in the namespace of each robot if you want to use merging with known initial poses of robots (`known_init_poses` is `true`). Without these parameters robots won't be considered for merging. If you can't provide these parameters use merging without known initial poses. See [[#Merging modes]]
 
     0.name = <robot_namespace>/map_merge/init_pose_x
     0.default = `<no_default>`
@@ -75,42 +89,59 @@ param {
 
   group.1 {
     name = NODE PARAMETERS
-    desc = Parameters that should be defined in the namespace of this node. 
+    desc = Parameters that should be defined in the namespace of this node.
 
-    4.name = ~robot_map_topic
+    0.name = ~robot_map_topic
+    0.default = `map`
+    0.type = string
+    0.desc = Name of robot map topic without namespaces (last component of topic name). Only topics with this name will be considered when looking for new maps to merge. This topics may be subject to further filtering (see below).
+
+    1.name = ~robot_map_updates_topic
+    1.default = `map_updates`
+    1.type = string
+    1.desc = Name of robot map updates topic of <<MsgLink(map_msgs/OccupancyGridUpdate)>> without namespaces (last component of topic name). This topic will be always subscribed in the same namespace as `robot_map_topic`. You'll likely need to change this only when you changed `robot_map_topic`. These topics are never considered when searching for new robots.
+
+    2.name = ~robot_namespace
+    2.default =  `<empty string>`
+    2.type = string
+    2.desc = Fixed part of robot map topic. You can employ this parameter to further limit which topics will be considered during dynamic lookup for robots. Only topics which contain (anywhere) this string will be considered for lookup. Unlike `robot_map_topic` you are not limited by namespace logic. Topics will be filtered using text-based search. Therefore `robot_namespace` does not need to be ROS namespace, but can contain slashes etc. This must be common part of all robots map topics name (all robots for which you want to merge map).
+
+    3.name = ~known_init_poses
+    3.default = `true`
+    3.type = bool
+    3.desc = Selects between merging modes. `true` if merging with known initial positions. See [[#Merging modes]]
+
+    4.name = ~merged_map_topic
     4.default = `map`
     4.type = string
-    4.desc = Name of robot map topic without namespaces (last component of topic name). Only topics with this name will be considered when looking for new maps to merge. This topics may be subject to further filtering (see below).
+    4.desc = Topic name where merged map will be published.
 
-    5.name = ~robot_map_updates_topic
-    5.default = `map_updates`
+    5.name = ~world_frame
+    5.default = `world`
     5.type = string
-    5.desc = Name of robot map updates topic of <<MsgLink(map_msgs/OccupancyGridUpdate)>> without namespaces (last component of topic name). This topic will be always subscribed in the same namespace as `robot_map_topic`. You'll likely need to change this only when you changed `robot_map_topic`. These topics are never considered when searching for new robots.
+    5.desc = Frame id (in [[tf]] tree) which will be assigned to published merged map. This should be frame where you specified robot initial positions.
 
-    6.name = ~robot_namespace
-    6.default = `` (empty string)
-    6.type = string
-    6.desc = Fixed part of robot map topic. You can employ this parameter to further limit which topics will be considered during dynamic lookup for robots. Only topics which contain (anywhere) this string will be considered for lookup. Unlike `robot_map_topic` you are not limited by namespace logic. Topics will be filtered using text-based search. Therefore `robot_namespace` does not need to be ROS namespace, but can contain slashes etc. This must be common part of all robots map topics name (all robots for which you want to merge map).
+    6.name = ~merging_rate
+    6.default = `4.0`
+    6.type = double
+    6.desc = Rate in Hz. Basic frequency on which this node discovers merges robots maps and publish merged map. Increase this value if you want faster updates.
 
-    7.name = ~merged_map_topic
-    7.default = `map`
-    7.type = string
-    7.desc = Topic name where merged map will be published.
+    7.name = ~discovery_rate
+    7.default = `0.05`
+    7.type = double
+    7.desc = Rate in Hz. Frequency on which this node discovers new robots. Increase this value if you need more agile behaviour when adding new robots. Robots will be discovered sooner.
 
-    8.name = ~world_frame
-    8.default = `world`
-    8.type = string
-    8.desc = Frame id (in [[tf]] tree) which will be assigned to published merged map. This should be frame where you specified robot initial positions.
-
-    9.name = ~merging_rate
-    9.default = `4.0`
-    9.type = double
-    9.desc = Rate in Hz. Basic frequency on which this node discovers new robots, merges their maps and publish merged map. Increase this value if you want faster updates.
+    8.name = ~estimation_rate
+    8.default = `0.5`
+    8.type = double
+    8.desc = Rate in Hz. This parameter is relevant only when merging without known positions, see [[#Merging modes]]. Frequency on which this node re-estimates transformation between grids. Estimation is cpu-intensive, so you may wish to lower this value.
   }
 }
 }}}
 
 == Acknowledgements ==
+
+This package was developed as part of my bachelor thesis at [[http://www.mff.cuni.cz/to.en/|Charles University]] in Prague.
 
 Idea for dynamic robot discovery is from [[map_merging]] package from Zhi Yan. Merging algorithm and configuration are different.
 
