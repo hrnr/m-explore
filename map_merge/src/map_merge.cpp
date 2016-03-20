@@ -175,15 +175,49 @@ void MapMerging::mapMerging()
 void MapMerging::poseEstimation()
 {
   ROS_DEBUG("Grid pose estimation started.");
+
+  std::vector<geometry_msgs::Pose> transforms;
+  transforms.resize(grid_view_.size());
+
   // exclusive locking. we don't want map sizes to change when finding features.
   // Although this could run simultaneously with merging, we don't currently do
   // that. Also could be improved to lock only when looking for features.
   std::lock_guard<boost::shared_mutex> lock(merging_mutex_);
 
-  // will write new pose estimations to initial poses. this initial poses will
-  // be used on the next update for merging.
+  // do the same resize under the lock. we must make sure it has the proper size
+  transforms.resize(grid_view_.size());
+
   combine_grids::estimateGridTransform(grid_view_.cbegin(), grid_view_.cend(),
-                                       pose_view_.begin());
+                                       transforms.begin());
+
+  /* update poses immediately. Although this would be propagated on next update
+   * for each map, it is necessary to that now as we might not receive update
+   * for some map for a long time. Also this maintains consistency. */
+
+  // update grids origins
+  auto grid_it = grid_view_.begin();
+  auto pose_it = pose_view_.begin();
+  for (auto& transform : transforms) {
+    nav_msgs::OccupancyGrid& grid = *grid_it;   // reference wrapper
+    geometry_msgs::Pose& init_pose = *pose_it;  // reference wrapper
+    tf::Pose init_pose_tf;
+    tf::Pose origin_tf;
+    tf::Pose transform_tf;
+    tf::poseMsgToTF(init_pose, init_pose_tf);
+    tf::poseMsgToTF(grid.info.origin, origin_tf);
+    tf::poseMsgToTF(transform, transform_tf);
+
+    // we need to compensate previous init pose and add new init pose
+    origin_tf *= init_pose_tf.inverseTimes(transform_tf);
+
+    // store back computed origin
+    tf::poseTFToMsg(origin_tf, grid.info.origin);
+    // update init pose with the new one
+    init_pose = transform;
+
+    ++pose_it;
+    ++grid_it;
+  }
 }
 
 void MapMerging::fullMapUpdate(const nav_msgs::OccupancyGrid::ConstPtr& msg,
