@@ -91,15 +91,19 @@ void AffineBestOf2NearestMatcher::match(
                                           matches_info.inliers_mask, false);
   ROS_DEBUG_STREAM("estimate:\n" << matches_info.H);
 
+  if (matches_info.H.empty()) {
+    // could not find trasformation
+    matches_info.confidence = 0;
+    matches_info.num_inliers = 0;
+    return;
+  }
+
   // extend H to represent linear tranformation in homogeneous coordinates
   matches_info.H.push_back(cv::Mat::zeros(1, 3, CV_64F));
   matches_info.H.at<double>(2, 2) = 1;
 
-  if (matches_info.H.empty() ||
-      std::abs(determinant(matches_info.H)) <
-          std::numeric_limits<double>::epsilon()) {
-    return;
-  }
+  /* TODO: should we handle determinant ~ 0 (can it happen due to agressive
+   * scaling?) */
 
   // Find number of inliers
   matches_info.num_inliers = 0;
