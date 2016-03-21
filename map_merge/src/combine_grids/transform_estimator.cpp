@@ -93,6 +93,16 @@ bool AffineBasedEstimator::estimate(
   cameras.resize(features.size());
   const int num_images = static_cast<int>(features.size());
 
+  // find if we have any affine estimates
+  bool have_any_transform = false;
+  for(auto& match : pairwise_matches) {
+    have_any_transform |= !match.H.empty();
+  }
+  // we don't need to do anything
+  if(!have_any_transform) {
+    return true;
+  }
+
   // find maximum spaning tree on pairwise matches
   cv::detail::Graph span_tree;
   std::vector<int> span_tree_centers;
