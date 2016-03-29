@@ -89,7 +89,7 @@ void MapMerging::topicSubscribing()
 
   ros::master::getTopics(topic_infos);
   // default msg constructor does no properly initialize quaternion
-  tf::quaternionTFToMsg(tf::createIdentityQuaternion(), init_pose.orientation);
+  init_pose.orientation.w = 1; // create identity quaternion
 
   for (const auto& topic : topic_infos) {
     // we check only map topic
@@ -248,8 +248,7 @@ void MapMerging::fullMapUpdate(const nav_msgs::OccupancyGrid::ConstPtr& msg,
             map.map.info.origin.orientation.w);
   ROS_DEBUG("init_pose %f %f, (%f, %f, %f, %f)", map.initial_pose.position.x,
             map.initial_pose.position.y, map.initial_pose.orientation.x,
-            map.initial_pose.orientation.y,
-            map.initial_pose.orientation.z,
+            map.initial_pose.orientation.y, map.initial_pose.orientation.z,
             map.initial_pose.orientation.w);
   map.map.info.origin += map.initial_pose;
   ROS_DEBUG("origin %f %f, (%f, %f, %f, %f)", map.map.info.origin.position.x,
