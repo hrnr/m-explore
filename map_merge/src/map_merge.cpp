@@ -246,6 +246,11 @@ void MapMerging::fullMapUpdate(const nav_msgs::OccupancyGrid::ConstPtr& msg,
             map.map.info.origin.orientation.y,
             map.map.info.origin.orientation.z,
             map.map.info.origin.orientation.w);
+  ROS_DEBUG("init_pose %f %f, (%f, %f, %f, %f)", map.initial_pose.position.x,
+            map.initial_pose.position.y, map.initial_pose.orientation.x,
+            map.initial_pose.orientation.y,
+            map.initial_pose.orientation.z,
+            map.initial_pose.orientation.w);
   map.map.info.origin += map.initial_pose;
   ROS_DEBUG("origin %f %f, (%f, %f, %f, %f)", map.map.info.origin.position.x,
             map.map.info.origin.position.y, map.map.info.origin.orientation.x,
