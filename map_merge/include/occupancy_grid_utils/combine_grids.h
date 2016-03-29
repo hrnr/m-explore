@@ -137,11 +137,12 @@ nav_msgs::MapMetaData getCombinedGridInfo (ForwardIt first, ForwardIt last, cons
   if (!(min_x && max_x && min_y && max_y)) {
     return info;
   }
-  // min and max might be egual if we have only 1 grid
-  ROS_ASSERT((*max_x >= *min_x) && (*max_y >= *min_y));
 
   const double dx = *max_x - *min_x;
   const double dy = *max_y - *min_y;
+
+  // min and max might be egual if we have only 1 grid
+  ROS_ASSERT((*max_x >= *min_x) && (*max_y >= *min_y));
 
   geometry_msgs::Pose pose_in_grid_frame;
   pose_in_grid_frame.position.x = *min_x;
