@@ -67,28 +67,30 @@ namespace combine_grids
  * @param grids_begin,grids_end the range of input grids
  * @param transforms_begin the beginning of the destination range for estimated
  *transforms
- * @return true if all transforms were sucessfuly estimated. If transformation
- *could not be established for given grid empty Pose will be set in trasforms.
+ * @return number of sucessfuly estimated transforms. If transformation
+ *could not be established for given grid, empty Pose will be set in trasforms.
  */
 template <typename ForwardIt, typename OutputIt>
-bool estimateGridTransform(ForwardIt grids_begin, ForwardIt grids_end,
-                           OutputIt transforms_begin);
+size_t estimateGridTransform(ForwardIt grids_begin, ForwardIt grids_end,
+                             OutputIt transforms_begin);
 
 namespace internal
 {
 /**
  * @brief Estimates tranformation using opencv stitching pipeline
- * @details For given images computes transformation, such that all images
- *transformed makes
+ * @details For given images computes transformations, such that all images
+ *transformed makes one image.
+ *
+ *All transforms will form one component (there will always exist transforms
+ *between each other). This will be the biggest possible component. Solo matches
+ *and smaller components are left out
  *
  * @param images images usable by opencv stitching pipeline
- * @param transforms estimated trasforms
- * @return true if all transformations were successfully estimated. false if
- *some of the transformations could not be estimated or error occured during
- *estimation.
+ * @param transforms estimated transforms
+ * @return number of successfully estimated transforms with enough confidence.
  */
-bool opencvEstimateTransform(const std::vector<cv::Mat>& images,
-                             std::vector<cv::Mat>& transforms);
+size_t opencvEstimateTransform(const std::vector<cv::Mat>& images,
+                               std::vector<cv::Mat>& transforms);
 
 }  // namespace internal
 }  // namespace combine_grids
@@ -98,7 +100,7 @@ bool opencvEstimateTransform(const std::vector<cv::Mat>& images,
 namespace combine_grids
 {
 template <typename ForwardIt, typename OutputIt>
-bool estimateGridTransform(ForwardIt grids_begin, ForwardIt grids_end,
+size_t estimateGridTransform(ForwardIt grids_begin, ForwardIt grids_end,
                            OutputIt transforms_begin)
 {
   static_assert(std::is_assignable<nav_msgs::OccupancyGrid&,
@@ -129,7 +131,7 @@ bool estimateGridTransform(ForwardIt grids_begin, ForwardIt grids_end,
                         it_ref.data.data());
   }
 
-  bool success = internal::opencvEstimateTransform(images, transforms);
+  size_t num_estimates = internal::opencvEstimateTransform(images, transforms);
 
   auto transform_it = transforms_begin;
   auto grid_it = grids_begin;
@@ -159,7 +161,7 @@ bool estimateGridTransform(ForwardIt grids_begin, ForwardIt grids_end,
     ++transform_it;
   }
 
-  return success;
+  return num_estimates;
 }
 
 }  // namespace combine_grids

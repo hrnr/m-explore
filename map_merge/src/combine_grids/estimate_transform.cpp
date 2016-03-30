@@ -41,6 +41,7 @@
 #include <opencv2/core/utility.hpp>
 
 #include <ros/console.h>
+#include <ros/assert.h>
 
 #include <combine_grids/features_matcher.h>
 #include <combine_grids/transform_estimator.h>
@@ -49,12 +50,13 @@ namespace combine_grids
 {
 namespace internal
 {
-bool opencvEstimateTransform(const std::vector<cv::Mat>& images,
-                             std::vector<cv::Mat>& final_transforms)
+size_t opencvEstimateTransform(const std::vector<cv::Mat>& images,
+                               std::vector<cv::Mat>& final_transforms)
 {
   std::vector<cv::detail::ImageFeatures> image_features;
   std::vector<cv::detail::MatchesInfo> pairwise_matches;
   std::vector<cv::detail::CameraParams> transforms;
+  std::vector<int> matched_indices;
   cv::Ptr<cv::detail::FeaturesFinder> finder =
       cv::makePtr<cv::detail::OrbFeaturesFinder>();
   cv::Ptr<cv::detail::FeaturesMatcher> matcher =
@@ -63,7 +65,7 @@ bool opencvEstimateTransform(const std::vector<cv::Mat>& images,
       cv::makePtr<internal::AffineBasedEstimator>();
 
   if (images.size() < 2) {
-    return false;
+    return 0;
   }
 
   /* find features in images */
@@ -81,30 +83,38 @@ bool opencvEstimateTransform(const std::vector<cv::Mat>& images,
   (*matcher)(image_features, pairwise_matches);
   matcher->collectGarbage();
 
+  /* use only matches that has enough confidence. leave out matches that are not
+   * connected (small components) */
+  matched_indices =
+      cv::detail::leaveBiggestComponent(image_features, pairwise_matches, 0.5);
+
   /* estimate transform */
   ROS_DEBUG("estimating final transform");
   // note: currently used estimator never fails
   if (!(*estimator)(image_features, pairwise_matches, transforms)) {
-    return false;
+    return 0;
   }
 
-  for (cv::detail::CameraParams& transform : transforms) {
-    if (!transform.R.empty())
+  ROS_ASSERT(matched_indices.size() == transforms.size());
+
+  final_transforms.clear();
+  final_transforms.resize(images.size());
+  size_t i = 0;
+  for (auto& transform : transforms) {
+    if (!transform.R.empty()) {
       ROS_DEBUG("TRANSFORM: trans x: %f, trans y %f, rot: %f\n",
                 transform.R.at<double>(0, 2), transform.R.at<double>(1, 2),
                 std::atan2(transform.R.at<double>(0, 1),
                            transform.R.at<double>(1, 1)));
+    }
+
+    final_transforms[i] = transform.R;
+    ++i;
   }
 
-  final_transforms.clear();
-  final_transforms.reserve(transforms.size());
-  bool have_all_estimates = true;
-  for (auto& transform : transforms) {
-    final_transforms.emplace_back(transform.R);
-    have_all_estimates &= transform.R.empty();
-  }
+  ROS_ASSERT(final_transforms.size() == images.size());
 
-  return have_all_estimates;
+  return transforms.size();
 }
 }  // namespace internal
 }  // namespace combine_grids
