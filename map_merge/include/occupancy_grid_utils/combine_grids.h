@@ -44,15 +44,31 @@
 
 #include <set>
 #include <iterator>
+#include <limits>
+#include <cmath>
 
 #include <ros/assert.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <tf/transform_datatypes.h>
 
 #include <boost/foreach.hpp>
-#include <boost/optional.hpp>
 
 #include <occupancy_grid_utils/coordinate_conversions.h>
+
+/*
+ * internal macro
+ * @brief Computes specified boundary for polygon
+ * @details [long description]
+ *
+ * @param polygon pologon to work on
+ * @param minmax Must be 'min' or 'max' will compute minimum or maximum
+ * respectively
+ * @param xy Must be 'x' or 'y'. Coordinate.
+ */
+#define POLYGON_BOUND(polygon, minmax, xy) \
+ static_cast<double>(std::minmax(polygon.points[0].xy, \
+  std::minmax(polygon.points[1].xy, \
+  std::minmax(polygon.points[2].xy, polygon.points[3].xy))))
 
 namespace occupancy_grid_utils
 {
@@ -94,10 +110,6 @@ template<typename ForwardIt>
 nav_msgs::MapMetaData getCombinedGridInfo (ForwardIt first, ForwardIt last, const double resolution);
 std::set<Cell> intersectingCells (const nav_msgs::MapMetaData& info, const nav_msgs::MapMetaData& info2, const Cell& cell2);
 geometry_msgs::Pose transformPose (const tf::Pose trans, const geometry_msgs::Pose p);
-inline double minX (const nav_msgs::MapMetaData& info);
-inline double maxX (const nav_msgs::MapMetaData& info);
-inline double minY (const nav_msgs::MapMetaData& info);
-inline double maxY (const nav_msgs::MapMetaData& info);
 
 /* templates */
 
@@ -106,8 +118,11 @@ template<typename ForwardIt>
 nav_msgs::MapMetaData getCombinedGridInfo (ForwardIt first, ForwardIt last, const double resolution)
 {
   nav_msgs::MapMetaData info;
-  info.resolution = resolution;
+  info.resolution = static_cast<float>(resolution);
   tf::Pose trans;
+  double min_x, max_x, min_y, max_y;
+  min_x = min_y = std::numeric_limits<double>::infinity();
+  max_x = max_y = -std::numeric_limits<double>::infinity();
 
   if(first == last) {
     return info;
@@ -115,7 +130,7 @@ nav_msgs::MapMetaData getCombinedGridInfo (ForwardIt first, ForwardIt last, cons
 
   const nav_msgs::OccupancyGrid& first_ref = *first; // needed to support reference_wrapper
   tf::poseMsgToTF(first_ref.info.origin, trans);
-  boost::optional<double> min_x, max_x, min_y, max_y;
+
 
   for (ForwardIt grid_it = first; grid_it != last; ++grid_it) {
     const nav_msgs::OccupancyGrid& grid = *grid_it; // needed to support reference_wrapper
@@ -123,30 +138,32 @@ nav_msgs::MapMetaData getCombinedGridInfo (ForwardIt first, ForwardIt last, cons
       // skip empty grids as nothing will merged for them
       continue;
     }
+
+    /* get bounding polygon for grid in world frame */
     nav_msgs::MapMetaData grid_info = grid.info;
     grid_info.origin = transformPose(trans.inverse(), grid.info.origin);
-    if (!(min_x && *min_x < minX(grid_info)))
-      min_x = minX(grid_info);
-    if (!(min_y && *min_y < minY(grid_info)))
-      min_y = minY(grid_info);
-    if (!(max_x && *max_x > maxX(grid_info)))
-      max_x = maxX(grid_info);
-    if (!(max_y && *max_y > maxY(grid_info)))
-      max_y = maxY(grid_info);
+    geometry_msgs::Polygon polygon = gridPolygon(grid_info);
+
+    min_x = std::min(min_x, POLYGON_BOUND(polygon, min, x));
+    min_y = std::min(min_y, POLYGON_BOUND(polygon, min, y));
+    max_x = std::max(max_x, POLYGON_BOUND(polygon, max, x));
+    max_y = std::max(max_y, POLYGON_BOUND(polygon, max, y));
   }
-  if (!(min_x && max_x && min_y && max_y)) {
+
+  // all grids were empty
+  if (!std::isfinite(min_x)) {
     return info;
   }
 
-  const double dx = *max_x - *min_x;
-  const double dy = *max_y - *min_y;
+  const double dx = max_x - min_x;
+  const double dy = max_y - min_y;
 
   // min and max might be egual if we have only 1 grid
-  ROS_ASSERT((*max_x >= *min_x) && (*max_y >= *min_y));
+  ROS_ASSERT((max_x >= min_x) && (max_y >= min_y));
 
   geometry_msgs::Pose pose_in_grid_frame;
-  pose_in_grid_frame.position.x = *min_x;
-  pose_in_grid_frame.position.y = *min_y;
+  pose_in_grid_frame.position.x = min_x;
+  pose_in_grid_frame.position.y = min_y;
   pose_in_grid_frame.orientation.w = 1.0;
   info.origin = transformPose(trans, pose_in_grid_frame);
   info.height = std::ceil(dy/info.resolution);
@@ -208,32 +225,9 @@ void combineGrids (ForwardIt first, ForwardIt last, nav_msgs::OccupancyGrid& res
   combineGrids(first, last, first_ref.info.resolution, result);
 }
 
-/* inlined util functions */
-
-inline double minX (const nav_msgs::MapMetaData& info)
-{
-  const geometry_msgs::Polygon p=gridPolygon(info);
-  return std::min(p.points[0].x, std::min(p.points[1].x, std::min(p.points[2].x, p.points[3].x)));
-}
-
-inline double maxX (const nav_msgs::MapMetaData& info)
-{
-  const geometry_msgs::Polygon p=gridPolygon(info);
-  return std::max(p.points[0].x, std::max(p.points[1].x, std::max(p.points[2].x, p.points[3].x)));
-}
-
-inline double minY (const nav_msgs::MapMetaData& info)
-{
-  const geometry_msgs::Polygon p=gridPolygon(info);
-  return std::min(p.points[0].y, std::min(p.points[1].y, std::min(p.points[2].y, p.points[3].y)));
-}
-
-inline double maxY (const nav_msgs::MapMetaData& info)
-{
-  const geometry_msgs::Polygon p=gridPolygon(info);
-  return std::max(p.points[0].y, std::max(p.points[1].y, std::max(p.points[2].y, p.points[3].y)));
-}
-
 } // namespace occupancy_grid_utils
+
+// internal macro
+#undef POLYGON_BOUND
 
 #endif // include guard
