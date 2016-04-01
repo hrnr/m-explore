@@ -86,7 +86,13 @@ private:
   std::forward_list<PosedMap> maps_;
   size_t maps_size_;
   // does not own. view of only grids from PosedMaps for merging
-  std::vector<std::reference_wrapper<nav_msgs::OccupancyGrid>> grid_view_;
+  typedef std::vector<std::reference_wrapper<nav_msgs::OccupancyGrid>>
+      grids_view_t;
+  // always contains all grids
+  grids_view_t all_grids_view_;
+  // aplicable only when estimations is on, will contain only grids which poses
+  // could be properly estimated
+  grids_view_t estimated_grids_view_;
   // this must be locked exclusively when modifying grid_view_ or changing
   // metadata (esp. size!) of OccupancyGrids inside. This could otherwise break
   // horribly because merging algorithm needs to compute merged map size first.

@@ -124,11 +124,7 @@ void MapMerging::topicSubscribing()
       boost::shared_lock<boost::shared_mutex> lock(merging_mutex_);
       maps_.emplace_front();
       ++maps_size_;
-      // if we are running estimation mode we want to add this map to merging
-      // only after estimation
-      if (have_initial_poses_) {
-        grid_view_.emplace_back(maps_.front().map);
-      }
+      all_grids_view_.emplace_back(maps_.front().map);
     }
 
     // no locking here. robots_ are used only in this procedure
@@ -161,12 +157,22 @@ void MapMerging::topicSubscribing()
  */
 void MapMerging::mapMerging()
 {
+  grids_view_t* grids;
+
   ROS_DEBUG("Map merging started.");
+
+  /* when estimating we need to merge only estimated grids, when init poses are
+   * known we will always merging all grids (estimated grids are empty). */
+  if (have_initial_poses_) {
+    grids = &all_grids_view_;
+  } else {
+    grids = &estimated_grids_view_;
+  }
 
   {
     // exclusive locking. we don't want map sizes to change during muxing.
     std::lock_guard<boost::shared_mutex> lock(merging_mutex_);
-    occupancy_grid_utils::combineGrids(grid_view_.cbegin(), grid_view_.cend(),
+    occupancy_grid_utils::combineGrids(grids->cbegin(), grids->cend(),
                                        merged_map_);
   }
 
@@ -185,7 +191,7 @@ void MapMerging::poseEstimation()
 
   // do allocations outside of lock
   transforms.resize(maps_size_);
-  grid_view_.reserve(maps_size_);
+  estimated_grids_view_.reserve(maps_size_);
 
   // exclusive locking. we don't want map sizes to change when finding features.
   // Although this could run simultaneously with merging, we don't currently do
@@ -196,7 +202,7 @@ void MapMerging::poseEstimation()
   transforms.resize(maps_size_);
 
   size_t num_est_transforms = combine_grids::estimateGridTransform(
-      grid_view_.cbegin(), grid_view_.cend(), transforms.begin());
+      all_grids_view_.cbegin(), all_grids_view_.cend(), transforms.begin());
 
   if (num_est_transforms < num_last_est_transforms_) {
     // we had a better estimate last time
@@ -207,8 +213,8 @@ void MapMerging::poseEstimation()
    * established from merging */
 
   // update grids origins
-  grid_view_.clear();
-  grid_view_.reserve(num_est_transforms);
+  estimated_grids_view_.clear();
+  estimated_grids_view_.reserve(num_est_transforms);
   auto map_it = maps_.begin();
   for (auto& transform : transforms) {
     // empty quaternion means empty transform (quaternions are normalized
@@ -237,7 +243,7 @@ void MapMerging::poseEstimation()
     map_it->initial_pose = transform;
 
     // add to merging
-    grid_view_.emplace_back(map_it->map);
+    estimated_grids_view_.emplace_back(map_it->map);
 
     ++map_it;
   }
