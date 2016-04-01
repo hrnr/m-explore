@@ -84,14 +84,16 @@ private:
   std::unordered_map<std::string, PosedMap*> robots_;
   // owns maps -- iterator safe
   std::forward_list<PosedMap> maps_;
+  size_t maps_size_;
   // does not own. view of only grids from PosedMaps for merging
   std::vector<std::reference_wrapper<nav_msgs::OccupancyGrid>> grid_view_;
-  // does not own. view of only to poses for position estimation
-  std::vector<std::reference_wrapper<geometry_msgs::Pose>> pose_view_;
   // this must be locked exclusively when modifying grid_view_ or changing
   // metadata (esp. size!) of OccupancyGrids inside. This could otherwise break
   // horribly because merging algorithm needs to compute merged map size first.
   boost::shared_mutex merging_mutex_;
+
+  // used only for estimation to know if we got better match than last time
+  std::size_t num_last_est_transforms_;
 
   std::string robotNameFromTopic(const std::string& topic);
   bool isRobotMapTopic(const ros::master::TopicInfo& topic);

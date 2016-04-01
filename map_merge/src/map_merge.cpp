@@ -50,7 +50,7 @@ namespace map_merge
 geometry_msgs::Pose& operator+=(geometry_msgs::Pose&,
                                 const geometry_msgs::Pose&);
 
-MapMerging::MapMerging()
+MapMerging::MapMerging() : maps_size_(0), num_last_est_transforms_(0)
 {
   ros::NodeHandle private_nh("~");
   std::string frame_id;
@@ -89,7 +89,7 @@ void MapMerging::topicSubscribing()
 
   ros::master::getTopics(topic_infos);
   // default msg constructor does no properly initialize quaternion
-  init_pose.orientation.w = 1; // create identity quaternion
+  init_pose.orientation.w = 1;  // create identity quaternion
 
   for (const auto& topic : topic_infos) {
     // we check only map topic
@@ -114,24 +114,29 @@ void MapMerging::topicSubscribing()
     }
 
     ROS_INFO("adding robot [%s] to system", robot_name.c_str());
-    // we don't need locking here, because: 1) this is the only place we pushing
-    // to list. 2) Nobody is ever iterating over this list. 3) It is
-    // iterator-safe to push to this list, so nobody's pointers (used in
-    // callback) will be invalidated.
-    maps_.emplace_front();
-    PosedMap& map = maps_.front();
-    // no locking here. robots_ are used only in this procedure
-    robots_.insert({robot_name, &map});
-    map.initial_pose = init_pose;
     {
-      // we need only shared lock here. Map updating callbacks are not using
-      // grid_view_, but maps directly. Of course this must not run concurently
-      // with map merging as all iterators may be invalidated for grid_view_
+      // we need only shared lock here. 1) Map updating callbacks are not
+      // using grid_view_, but maps directly. 2) It is iterator-safe to push
+      // to maps_, so callbacks's pointers (used in callback) will NOT be
+      // invalidated. Of course this must NOT 1) run concurently with map
+      // merging as all iterators may be invalidated for grid_view_ 2) run
+      // concurently with estimation as estimation is iterating over maps_
       boost::shared_lock<boost::shared_mutex> lock(merging_mutex_);
-      grid_view_.emplace_back(map.map);
-      pose_view_.emplace_back(map.initial_pose);
+      maps_.emplace_front();
+      ++maps_size_;
+      // if we are running estimation mode we want to add this map to merging
+      // only after estimation
+      if (have_initial_poses_) {
+        grid_view_.emplace_back(maps_.front().map);
+      }
     }
 
+    // no locking here. robots_ are used only in this procedure
+    PosedMap& map = maps_.front();
+    robots_.insert({robot_name, &map});
+    map.initial_pose = init_pose;
+
+    /* subscribe callbacks */
     map_topic = ros::names::append(robot_name, robot_map_topic_);
     map_updates_topic =
         ros::names::append(robot_name, robot_map_updates_topic_);
@@ -177,7 +182,10 @@ void MapMerging::poseEstimation()
   ROS_DEBUG("Grid pose estimation started.");
 
   std::vector<geometry_msgs::Pose> transforms;
-  transforms.resize(grid_view_.size());
+
+  // do allocations outside of lock
+  transforms.resize(maps_size_);
+  grid_view_.reserve(maps_size_);
 
   // exclusive locking. we don't want map sizes to change when finding features.
   // Although this could run simultaneously with merging, we don't currently do
@@ -185,38 +193,53 @@ void MapMerging::poseEstimation()
   std::lock_guard<boost::shared_mutex> lock(merging_mutex_);
 
   // do the same resize under the lock. we must make sure it has the proper size
-  transforms.resize(grid_view_.size());
+  transforms.resize(maps_size_);
 
-  combine_grids::estimateGridTransform(grid_view_.cbegin(), grid_view_.cend(),
-                                       transforms.begin());
+  size_t num_est_transforms = combine_grids::estimateGridTransform(
+      grid_view_.cbegin(), grid_view_.cend(), transforms.begin());
 
-  /* update poses immediately. Although this would be propagated on next update
-   * for each map, it is necessary to that now as we might not receive update
-   * for some map for a long time. Also this maintains consistency. */
+  if (num_est_transforms < num_last_est_transforms_) {
+    // we had a better estimate last time
+    return;
+  }
+
+  /* update poses. remove grids whose transforms could not be
+   * established from merging */
 
   // update grids origins
-  auto grid_it = grid_view_.begin();
-  auto pose_it = pose_view_.begin();
+  grid_view_.clear();
+  grid_view_.reserve(num_est_transforms);
+  auto map_it = maps_.begin();
   for (auto& transform : transforms) {
-    nav_msgs::OccupancyGrid& grid = *grid_it;   // reference wrapper
-    geometry_msgs::Pose& init_pose = *pose_it;  // reference wrapper
+    // empty quaternion means empty transform (quaternions are normalized
+    // normally). TODO: make this a function
+    double norm =
+        std::abs(transform.orientation.w) + std::abs(transform.orientation.x) +
+        std::abs(transform.orientation.y) + std::abs(transform.orientation.z);
+    if (norm < std::numeric_limits<double>::epsilon()) {
+      // this trasformation could not be estimated
+      continue;
+    }
+
     tf::Pose init_pose_tf;
     tf::Pose origin_tf;
     tf::Pose transform_tf;
-    tf::poseMsgToTF(init_pose, init_pose_tf);
-    tf::poseMsgToTF(grid.info.origin, origin_tf);
+    tf::poseMsgToTF(map_it->initial_pose, init_pose_tf);
+    tf::poseMsgToTF(map_it->map.info.origin, origin_tf);
     tf::poseMsgToTF(transform, transform_tf);
 
     // we need to compensate previous init pose and add new init pose
     origin_tf *= init_pose_tf.inverseTimes(transform_tf);
 
     // store back computed origin
-    tf::poseTFToMsg(origin_tf, grid.info.origin);
+    tf::poseTFToMsg(origin_tf, map_it->map.info.origin);
     // update init pose with the new one
-    init_pose = transform;
+    map_it->initial_pose = transform;
 
-    ++pose_it;
-    ++grid_it;
+    // add to merging
+    grid_view_.emplace_back(map_it->map);
+
+    ++map_it;
   }
 }
 
