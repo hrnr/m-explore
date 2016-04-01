@@ -209,6 +209,8 @@ void MapMerging::poseEstimation()
     return;
   }
 
+  num_last_est_transforms_ = num_est_transforms;
+
   /* update poses. remove grids whose transforms could not be
    * established from merging */
 
