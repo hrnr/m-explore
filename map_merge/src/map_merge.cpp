@@ -40,6 +40,7 @@
 #include <thread>
 
 #include <ros/console.h>
+#include <ros/assert.h>
 #include <occupancy_grid_utils/combine_grids.h>
 #include <occupancy_grid_utils/coordinate_conversions.h>
 #include <tf/transform_datatypes.h>
@@ -249,6 +250,8 @@ void MapMerging::poseEstimation()
 
     ++map_it;
   }
+
+  ROS_ASSERT(estimated_grids_view_.size() == num_est_transforms);
 }
 
 void MapMerging::fullMapUpdate(const nav_msgs::OccupancyGrid::ConstPtr& msg,
