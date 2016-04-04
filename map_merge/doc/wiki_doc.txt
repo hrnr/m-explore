@@ -11,6 +11,8 @@ This package provides global map for multiple robots. It can merge maps from arb
 
 If your run your robots under multiple ROS masters you need to run your own way of communication between robots and provide maps from robots on local topics (under the same master). Also if you want to distribute merged map back to robots your communication must take care of it.
 
+<<Youtube(8Adrn29BVbM&rel=0)>>
+
 {{{multirobot_map_merge}}} does not depend on any particular communication between robots.
 
 == Architecture ==
