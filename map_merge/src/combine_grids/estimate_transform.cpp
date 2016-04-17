@@ -46,6 +46,8 @@
 #include <combine_grids/features_matcher.h>
 #include <combine_grids/transform_estimator.h>
 
+#include <fstream>
+
 namespace combine_grids
 {
 namespace internal
@@ -82,6 +84,16 @@ size_t opencvEstimateTransform(const std::vector<cv::Mat>& images,
   ROS_DEBUG("pairwise matching features");
   (*matcher)(image_features, pairwise_matches);
   matcher->collectGarbage();
+
+  std::ofstream f("matches.dot");
+  std::vector<cv::String> image_names;
+  image_names.reserve(images.size());
+  int name = 0;
+  for(auto& feature : image_features) {
+    image_names.push_back(std::to_string(name));
+    ++name;
+  }
+  f << cv::detail::matchesGraphAsString(image_names, pairwise_matches, 1.0);
 
   /* use only matches that has enough confidence. leave out matches that are not
    * connected (small components) */
