@@ -67,12 +67,18 @@ namespace combine_grids
  * @param grids_begin,grids_end the range of input grids
  * @param transforms_begin the beginning of the destination range for estimated
  *transforms
+ * @param confidence minimal confidence according to probabilistic model for
+ *pairwise transform to be considered for final estimation. Default value 1.0 is
+ *suitable for most grids, increase this value for more confident estimations.
+ *Number of estimated transformations may decrease with increasing confidence.
+ *Good range for tuning is [1.0, 2.0].
  * @return number of sucessfuly estimated transforms. If transformation
  *could not be established for given grid, empty Pose will be set in trasforms.
  */
 template <typename ForwardIt, typename OutputIt>
 size_t estimateGridTransform(ForwardIt grids_begin, ForwardIt grids_end,
-                             OutputIt transforms_begin);
+                             OutputIt transforms_begin,
+                             double confidence = 1.0);
 
 namespace internal
 {
@@ -87,10 +93,13 @@ namespace internal
  *
  * @param images images usable by opencv stitching pipeline
  * @param transforms estimated transforms
+ * @param confidence confidence treshold for probabilistic model based on number
+ *of inliers
  * @return number of successfully estimated transforms with enough confidence.
  */
 size_t opencvEstimateTransform(const std::vector<cv::Mat>& images,
-                               std::vector<cv::Mat>& transforms);
+                               std::vector<cv::Mat>& transforms,
+                               double confidence);
 
 }  // namespace internal
 }  // namespace combine_grids
@@ -101,7 +110,7 @@ namespace combine_grids
 {
 template <typename ForwardIt, typename OutputIt>
 size_t estimateGridTransform(ForwardIt grids_begin, ForwardIt grids_end,
-                           OutputIt transforms_begin)
+                             OutputIt transforms_begin, double confidence)
 {
   static_assert(std::is_assignable<nav_msgs::OccupancyGrid&,
                                    decltype(*grids_begin)>::value,
@@ -131,7 +140,8 @@ size_t estimateGridTransform(ForwardIt grids_begin, ForwardIt grids_end,
                         it_ref.data.data());
   }
 
-  size_t num_estimates = internal::opencvEstimateTransform(images, transforms);
+  size_t num_estimates =
+      internal::opencvEstimateTransform(images, transforms, confidence);
 
   auto transform_it = transforms_begin;
   auto grid_it = grids_begin;

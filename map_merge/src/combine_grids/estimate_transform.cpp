@@ -51,7 +51,8 @@ namespace combine_grids
 namespace internal
 {
 size_t opencvEstimateTransform(const std::vector<cv::Mat>& images,
-                               std::vector<cv::Mat>& final_transforms)
+                               std::vector<cv::Mat>& final_transforms,
+                               double confidence)
 {
   std::vector<cv::detail::ImageFeatures> image_features;
   std::vector<cv::detail::MatchesInfo> pairwise_matches;
@@ -85,8 +86,8 @@ size_t opencvEstimateTransform(const std::vector<cv::Mat>& images,
 
   /* use only matches that has enough confidence. leave out matches that are not
    * connected (small components) */
-  matched_indices =
-      cv::detail::leaveBiggestComponent(image_features, pairwise_matches, 1.0);
+  matched_indices = cv::detail::leaveBiggestComponent(
+      image_features, pairwise_matches, static_cast<float>(confidence));
 
   /* estimate transform */
   ROS_DEBUG("estimating final transform");
