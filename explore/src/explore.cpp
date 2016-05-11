@@ -73,6 +73,9 @@ void Explore::publishFrontiers() {
 }
 
 void Explore::makePlan() {
+  // this method may be called from callback
+  std::lock_guard<std::mutex> lock(planning_mutex_);
+
   tf::Stamped<tf::Pose> robot_pose;
   costmap_client_.getRobotPose(robot_pose);
 
@@ -176,13 +179,8 @@ void Explore::reachedGoal(
     ROS_DEBUG("Adding current goal to black list");
   }
 
-//  if(!done_exploring_){
-//    //create a plan from the frontiers left and send a new goal to move_base
-//    makePlan();
-//  }
-//  else{
-//    ROS_INFO("Exploration finished. Hooray.");
-//  }
+  //create a plan from the frontiers left and send a new goal to move_base
+  makePlan();
 }
 
 void Explore::execute() {

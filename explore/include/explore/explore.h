@@ -40,6 +40,7 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <mutex>
 
 #include <ros/ros.h>
 #include <move_base_msgs/MoveBaseAction.h>
@@ -100,6 +101,7 @@ private:
   navfn::NavfnROS planner_;
   actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> move_base_client_;
   ExploreFrontier explorer_;
+  std::mutex planning_mutex_;
 
   tf::Stamped<tf::Pose> global_pose_;
   double planner_frequency_;
