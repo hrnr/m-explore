@@ -18,8 +18,6 @@ find_package(catkin REQUIRED COMPONENTS
   roslaunch
 )
 
-find_package(Boost REQUIRED COMPONENTS thread)
-
 ################################################
 ## Declare ROS messages, services and actions ##
 ################################################
@@ -45,13 +43,11 @@ endif()
 ## Specify additional locations of header files
 include_directories(
   ${catkin_INCLUDE_DIRS}
-  ${Boost_INCLUDE_DIRS}
   include
 )
 
 add_executable(explore
   src/explore_frontier.cpp
-  src/loop_closure.cpp
   src/costmap_client.cpp
   src/explore.cpp
   src/navfn_ros.cpp

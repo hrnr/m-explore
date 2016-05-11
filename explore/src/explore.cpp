@@ -56,28 +56,9 @@ Explore::Explore() :
   private_nh_.param("planner_frequency", planner_frequency_, 1.0);
   private_nh_.param("progress_timeout", progress_timeout_, 30.0);
   private_nh_.param("visualize", visualize_, false);
-  double loop_closure_addition_dist_min;
-  double loop_closure_loop_dist_min;
-  double loop_closure_loop_dist_max;
-  double loop_closure_slam_entropy_max;
-  private_nh_.param("close_loops", close_loops_, false); // TODO: switch default to true once gmapping 1.1 has been released
-  private_nh_.param("loop_closure_addition_dist_min", loop_closure_addition_dist_min, 2.5);
-  private_nh_.param("loop_closure_loop_dist_min", loop_closure_loop_dist_min, 6.0);
-  private_nh_.param("loop_closure_loop_dist_max", loop_closure_loop_dist_max, 20.0);
-  private_nh_.param("loop_closure_slam_entropy_max", loop_closure_slam_entropy_max, 3.0);
   private_nh_.param("potential_scale", potential_scale_, 1e-3);
   private_nh_.param("orientation_scale", orientation_scale_, 0.0); // TODO: set this back to 0.318 once getOrientationChange is fixed
   private_nh_.param("gain_scale", gain_scale_, 1.0);
-
-  loop_closure_ = std::unique_ptr<LoopClosure>(new LoopClosure( 
-    loop_closure_addition_dist_min,
-    loop_closure_loop_dist_min,
-    loop_closure_loop_dist_max,
-    loop_closure_slam_entropy_max,
-    planner_frequency_,
-    move_base_client_,
-    costmap_client_
-  ));
 
   if(visualize_) {
     marker_array_publisher_ = private_nh_.advertise<visualization_msgs::MarkerArray>("frontiers", 10);
@@ -143,7 +124,7 @@ void Explore::makePlan() {
       double dy = prev_goal_.pose.position.y - goal_pose.pose.position.y;
       double dist = sqrt(dx*dx+dy*dy);
       if (dist < 0.01) {
-        time_since_progress_ += 1.0f / planner_frequency_;
+        time_since_progress_ += 1.0 / planner_frequency_;
       }
     }
 
@@ -215,13 +196,6 @@ void Explore::execute() {
 
   ros::Rate r(planner_frequency_);
   while (relative_nh_.ok() && (!done_exploring_)) {
-
-    if (close_loops_) {
-      tf::Stamped<tf::Pose> robot_pose;
-      costmap_client_.getRobotPose(robot_pose);
-      loop_closure_->updateGraph(robot_pose);
-    }
-
     makePlan();
     r.sleep();
   }

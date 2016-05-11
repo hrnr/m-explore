@@ -48,7 +48,6 @@
 #include <visualization_msgs/MarkerArray.h>
 
 #include <explore/explore_frontier.h>
-#include <explore/loop_closure.h>
 #include <explore/costmap_client.h>
 
 /* I have been using modified version of navfn for a long time here.
@@ -101,7 +100,6 @@ private:
   navfn::NavfnROS planner_;
   actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> move_base_client_;
   ExploreFrontier explorer_;
-  std::unique_ptr<LoopClosure> loop_closure_;
 
   tf::Stamped<tf::Pose> global_pose_;
   double planner_frequency_;
@@ -110,7 +108,6 @@ private:
   size_t prev_plan_size_;
   double time_since_progress_, progress_timeout_;
   double potential_scale_, orientation_scale_, gain_scale_;
-  bool close_loops_;
   bool done_exploring_;
   bool visualize_;
 };
