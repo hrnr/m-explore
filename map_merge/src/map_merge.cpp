@@ -51,7 +51,7 @@ namespace map_merge
 geometry_msgs::Pose& operator+=(geometry_msgs::Pose&,
                                 const geometry_msgs::Pose&);
 
-MapMerging::MapMerging() : maps_size_(0), num_last_est_transforms_(0)
+MapMerging::MapMerging() : maps_size_(0)
 {
   ros::NodeHandle private_nh("~");
   std::string frame_id;
@@ -204,13 +204,6 @@ void MapMerging::poseEstimation()
 
   size_t num_est_transforms = combine_grids::estimateGridTransform(
       all_grids_view_.cbegin(), all_grids_view_.cend(), transforms.begin());
-
-  if (num_est_transforms < num_last_est_transforms_) {
-    // we had a better estimate last time
-    return;
-  }
-
-  num_last_est_transforms_ = num_est_transforms;
 
   /* update poses. remove grids whose transforms could not be
    * established from merging */

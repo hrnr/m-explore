@@ -98,9 +98,6 @@ private:
   // horribly because merging algorithm needs to compute merged map size first.
   boost::shared_mutex merging_mutex_;
 
-  // used only for estimation to know if we got better match than last time
-  std::size_t num_last_est_transforms_;
-
   std::string robotNameFromTopic(const std::string& topic);
   bool isRobotMapTopic(const ros::master::TopicInfo& topic);
   bool getInitPose(const std::string& name, geometry_msgs::Pose& pose);
