@@ -18,8 +18,6 @@ Unlike similar packages, {{{explore_lite}}} does not create it's own costmap. No
 
 {{{explore_lite}}} subscribes to a <<MsgLink(nav_msgs/OccupancyGrid)>> and <<MsgLink(map_msgs/OccupancyGridUpdate)>> messages to construct a map where it looks for frontiers. You can either use costmap published by [[move_base]] (ie. `<move_base>/global_costmap/costmap`) or you can use map constructed by mapping algorithm (SLAM). Better results were achieved on maps constructed by SLAM as they usually contain less noise.
 
-Currently {{{explore_lite}}} also requires footprint information. Footprint is published by [[move_base]] `move_base/global_costmap/footprint`. You can specify different footprint topic, but that should not be necassary. Default works for both circular and non-circular robots depending on [[move_base]] configuration.
-
 == ROS API ==
 {{{
 #!clearsilver CS/NodeAPI
@@ -40,10 +38,6 @@ sub {
   1.name = costmap_updates
   1.type = map_msgs/OccupancyGridUpdate
   1.desc = Incremental updates on costmap. Not necessary if source of map is always publishing full updates, i.e. does not provide this topic.
-
-  2.name = footprint_stamped
-  2.type = geometry_msgs/PolygonStamped
-  2.desc = Robot footprints updates. Usually provided by [[move_base]] (see above).
 }
 
 param {
@@ -57,11 +51,6 @@ param {
   1.type = string
   1.desc = Specifies topic of source <<MsgLink(nav_msgs/OccupancyGrid)>>. Mandatory.
 
-  2.name = ~footprint_topic
-  2.default = `footprint_stamped`
-  2.type = string
-  2.desc = Specifies topic of source <<MsgLink(geometry_msgs/PolygonStamped)>> representing robot foot print. Usualy provided by [[move_base]] (see above). Mandatory.
-
   3.name = ~costmap_updates_topic
   3.default = `costmap_updates`
   3.type = string
@@ -71,11 +60,6 @@ param {
   4.default = `false`
   4.type = bool
   4.desc = Specifies whether or not publish visualized frontiers.
-
-  5.name = ~static_footprint
-  5.default = `false`
-  5.type = bool
-  5.desc = Specifies whether or not robot footprint is static over time. If robot footprint will not change, set this parameter to `true` to save some CPU cycles. If you are not sure, setting to `false` will always work.
 
   6.name = ~planner_frequency
   6.default = `1.0`

@@ -40,8 +40,6 @@
 #include <functional>
 #include <mutex>
 
-#include <costmap_2d/footprint.h>
-
 namespace explore {
 
 // static translation table to speed things up
@@ -55,11 +53,8 @@ Costmap2DClient::Costmap2DClient(ros::NodeHandle& param_nh, ros::NodeHandle& sub
   std::string costmap_topic;
   std::string footprint_topic;
   std::string costmap_updates_topic;
-  bool static_footprint;
   param_nh.param("costmap_topic", costmap_topic, std::string("costmap"));
-  param_nh.param("footprint_topic", footprint_topic, std::string("footprint_stamped"));
   param_nh.param("costmap_updates_topic", costmap_updates_topic, std::string("costmap_updates"));
-  param_nh.param("static_footprint", static_footprint, false);
   param_nh.param("robot_base_frame", robot_base_frame_, std::string("base_link"));
   // transform tolerance is used for all tf transforms here
   param_nh.param("transform_tolerance", transform_tolerance_, 0.3);
@@ -72,19 +67,6 @@ Costmap2DClient::Costmap2DClient(ros::NodeHandle& param_nh, ros::NodeHandle& sub
       costmap_topic.c_str());
   auto costmap_msg = ros::topic::waitForMessage<nav_msgs::OccupancyGrid>(costmap_topic, subscription_nh);
   updateFullMap(costmap_msg);
-
-  /* initialize footprint */
-  ROS_INFO("Waiting for footprint to become available, topic: %s",
-      footprint_topic.c_str());
-  auto footprint_msg = ros::topic::waitForMessage<geometry_msgs::PolygonStamped>(footprint_topic, subscription_nh);
-  updateFootPrint(footprint_msg);
-
-  /* subscribe to footprint updates if it is necessary for robot */
-  if(!static_footprint) {
-    boost::function<void(const geometry_msgs::PolygonStamped::ConstPtr&)> footprint_cb =
-      std::bind(&Costmap2DClient::updateFootPrint, this, std::placeholders::_1);
-    footprint_sub_ = subscription_nh.subscribe(footprint_topic, 1000, footprint_cb);
-  }
 
   /* subscribe to map updates */
   boost::function<void(const map_msgs::OccupancyGridUpdate::ConstPtr&)> costmap_updates_cb =
@@ -192,23 +174,6 @@ void Costmap2DClient::updatePartialMap(const map_msgs::OccupancyGridUpdate::Cons
       ++i;
     }
   }
-}
-
-void Costmap2DClient::updateFootPrint(const geometry_msgs::PolygonStamped::ConstPtr& msg) {
-  // TODO footprint locking
-
-  // explicit copy from Point32 to Point
-  footprint_.resize(msg->polygon.points.size());
-  auto it = footprint_.begin();
-  for(auto& point : msg->polygon.points) {
-    it->x = point.x;
-    it->y = point.y;
-    it->z = point.z;
-    ++it;
-  }
-
-  // calculate radiuses
-  costmap_2d::calculateMinAndMaxDistances(footprint_, inscribed_radius_, circumscribed_radius_);
 }
 
 bool Costmap2DClient::getRobotPose(tf::Stamped<tf::Pose>& global_pose) const

@@ -297,13 +297,6 @@ void ExploreFrontier::findFrontiers() {
   for (auto& segment : segments) {
     Frontier frontier;
     size_t segment_size = segment.size();
-
-    //we want to make sure that the frontier is big enough for the robot to fit through
-    if (segment_size * costmap_->getResolution() < costmap_client_->getInscribedRadius()) {
-      ROS_DEBUG_THROTTLE(30, "some frontiers were small");
-      continue;
-    }
-
     float x = 0, y = 0;
     tf::Vector3 d(0,0,0);
 
