@@ -61,6 +61,7 @@ MapMerging::MapMerging() : maps_size_(0)
   private_nh.param("discovery_rate", discovery_rate_, 0.05);
   private_nh.param("estimation_rate", estimation_rate_, 0.5);
   private_nh.param("known_init_poses", have_initial_poses_, true);
+  private_nh.param("estimation_confidence", confidence_treshold_, 1.0);
   private_nh.param<std::string>("robot_map_topic", robot_map_topic_, "map");
   private_nh.param<std::string>("robot_map_updates_topic",
                                 robot_map_updates_topic_, "map_updates");
@@ -203,7 +204,8 @@ void MapMerging::poseEstimation()
   transforms.resize(maps_size_);
 
   size_t num_est_transforms = combine_grids::estimateGridTransform(
-      all_grids_view_.cbegin(), all_grids_view_.cend(), transforms.begin());
+      all_grids_view_.cbegin(), all_grids_view_.cend(), transforms.begin(),
+      confidence_treshold_);
 
   /* update poses. remove grids whose transforms could not be
    * established from merging */

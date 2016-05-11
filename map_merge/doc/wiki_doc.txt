@@ -137,6 +137,11 @@ param {
     8.default = `0.5`
     8.type = double
     8.desc = Rate in Hz. This parameter is relevant only when merging without known positions, see [[#Merging modes]]. Frequency on which this node re-estimates transformation between grids. Estimation is cpu-intensive, so you may wish to lower this value.
+
+    9.name = ~estimation_confidence
+    9.default = `1.0`
+    9.type = double
+    9.desc = This parameter is relevant only when merging without known positions, see [[#Merging modes]]. Confidence according to probabilistic model for initial positions estimation. Default value 1.0 is suitable for most applications, increase this value for more confident estimations. Number of maps included in the merge may decrease with increasing confidence. Generally larger overlaps between maps will be required for map to be included in merge. Good range for tuning is [1.0, 2.0].
   }
 }
 }}}

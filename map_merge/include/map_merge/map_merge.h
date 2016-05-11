@@ -71,6 +71,7 @@ private:
   double merging_rate_;
   double discovery_rate_;
   double estimation_rate_;
+  double confidence_treshold_;
   std::string robot_map_topic_;
   std::string robot_map_updates_topic_;
   std::string robot_namespace_;
