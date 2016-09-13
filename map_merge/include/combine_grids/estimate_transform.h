@@ -161,11 +161,11 @@ size_t estimateGridTransform(ForwardIt grids_begin, ForwardIt grids_end,
       /* transformation was computed in pixels, we need to convert to meters
        * (map resolution). also we want to compesate this trasformation so we
        * need to use oposite values. */
-      output_transform.position.x = -1. * translation_x * grid.info.resolution;
-      output_transform.position.y = -1. * translation_y * grid.info.resolution;
+      output_transform.position.x = 1. * translation_x * grid.info.resolution;
+      output_transform.position.y = 1. * translation_y * grid.info.resolution;
       output_transform.position.z = 0;
       output_transform.orientation =
-          tf::createQuaternionMsgFromYaw(-1. * rotation_rad);
+          tf::createQuaternionMsgFromYaw(1. * rotation_rad);
     }
     ++grid_it;
     ++transform_it;
