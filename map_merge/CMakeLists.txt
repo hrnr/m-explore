@@ -57,6 +57,7 @@ add_library(combine_grids STATIC
   src/combine_grids/features_matcher.cpp
   src/combine_grids/estimate_rigid_transform.cpp
   src/combine_grids/transform_estimator.cpp
+  src/combine_grids/merging_pipeline.cpp
 )
 target_link_libraries(combine_grids ${OpenCV_LIBRARIES})
 
