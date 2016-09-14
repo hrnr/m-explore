@@ -90,7 +90,7 @@ bool MergingPipeline::estimateTransform(double confidence)
   transforms_.resize(images_.size());
   size_t i = 0;
   for (size_t j : good_indices) {
-    transforms_[j].push_back(transforms[i].R);
+    transforms_[j] = transforms[i].R;
     ++i;
   }
 
