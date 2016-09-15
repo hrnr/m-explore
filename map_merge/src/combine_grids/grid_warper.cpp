@@ -34,67 +34,48 @@
  *
  *********************************************************************/
 
-#ifndef MERGING_PIPELINE_H_
-#define MERGING_PIPELINE_H_
+#include <combine_grids/grid_warper.h>
 
-#include <vector>
-
-#include <geometry_msgs/Transform.h>
-#include <nav_msgs/OccupancyGrid.h>
-
-#include <opencv2/core/utility.hpp>
+#include <opencv2/stitching/detail/warpers.hpp>
 
 namespace combine_grids
 {
-/**
- * @brief Pipeline for merging overlapping occupancy grids
- * @details Pipeline works on internally stored grids.
- */
-class MergingPipeline
+namespace internal
 {
-public:
-  template <typename InputIt>
-  bool feed(InputIt grids_begin, InputIt grids_end);
-  bool estimateTransform(double confidence = 1.0);
-  bool composeGrids();
 
-  std::vector<geometry_msgs::Transform> getTransforms();
-  nav_msgs::OccupancyGrid::Ptr getResult();
-
-private:
-  std::vector<nav_msgs::OccupancyGrid::ConstPtr> grids_;
-  std::vector<cv::Mat> images_;
-  std::vector<cv::Mat> transforms_;
-  nav_msgs::OccupancyGrid::Ptr result_;
-};
-
-template <typename InputIt>
-bool MergingPipeline::feed(InputIt grids_begin, InputIt grids_end)
+cv::Rect GridWarper::warp(const cv::Mat& grid, const cv::Mat& transform,
+                          cv::Mat& warped_grid)
 {
-  static_assert(std::is_assignable<nav_msgs::OccupancyGrid::ConstPtr&,
-                                   decltype(*grids_begin)>::value,
-                "grids_begin must point to nav_msgs::OccupancyGrid::ConstPtr "
-                "data");
+  cv::Mat H;
+  invertAffineTransform(transform.rowRange(0, 2), H);
+  cv::Rect roi = warpRoi(grid, H);
+  // shift top left corner for warp affine (otherwise the image is cropped)
+  H.at<float>(0, 2) -= roi.tl().x;
+  H.at<float>(1, 2) -= roi.tl().y;
+  warpAffine(grid, warped_grid, H, roi.size(), cv::INTER_NEAREST,
+             cv::BORDER_CONSTANT,
+             cv::Scalar::all(255) /* this is -1 for signed char */);
 
-  size_t size = std::distance(grids_begin, grids_end);
-  images_.clear();
-  images_.reserve(size);
-  grids_.clear();
-  grids_.reserve(size);
-  for (InputIt it = grids_begin; it != grids_end; ++it) {
-    if (*it && !(*it)->data.empty()) {
-      grids_.push_back(*it);
-      /* convert to opencv images. it creates only a view for opencv and does
-       * not copy or own actual data. */
-      images_.emplace_back(it->info.height, it->info.width, CV_8UC1,
-                           it->data.data());
-    } else {
-      grids_.emplace_back();
-      images_.emplace_back();
-    }
-  }
+  return roi;
 }
 
-}  // namespace combine_grids
+cv::Rect GridWarper::warpRoi(const cv::Mat& grid, const cv::Mat& transform)
+{
+  cv::Ptr<cv::detail::PlaneWarper> warper =
+      cv::makePtr<cv::detail::PlaneWarper>();
 
-#endif  // MERGING_PIPELINE_H_
+  // separate rotation and translation for plane warper
+  cv::Mat T = cv::Mat::zeros(3, 1, CV_32F);
+  cv::Mat R;
+  transform.convertTo(R, CV_32F);
+  T.at<float>(0,0) = R.at<float>(0,2);
+  T.at<float>(1,0) = R.at<float>(1,2);
+  R.at<float>(0,2) = 0.f;
+  R.at<float>(1,2) = 0.f;
+
+  return warper->warpRoi(grid.size(), cv::Mat::eye(3, 3, CV_32F), R, T);
+}
+
+}  // namespace internal
+
+}  // namespace combine_grids

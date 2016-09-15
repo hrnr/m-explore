@@ -58,6 +58,8 @@ add_library(combine_grids STATIC
   src/combine_grids/estimate_rigid_transform.cpp
   src/combine_grids/transform_estimator.cpp
   src/combine_grids/merging_pipeline.cpp
+  src/combine_grids/grid_warper.cpp
+  src/combine_grids/grid_compositor.cpp
 )
 target_link_libraries(combine_grids ${OpenCV_LIBRARIES})
 

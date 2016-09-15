@@ -37,7 +37,12 @@
 #include <combine_grids/merging_pipeline.h>
 
 #include <combine_grids/features_matcher.h>
+#include <combine_grids/grid_warper.h>
+#include <combine_grids/grid_compositor.h>
 #include <combine_grids/transform_estimator.h>
+
+#include <ros/assert.h>
+#include <ros/console.h>
 
 namespace combine_grids
 {
@@ -97,4 +102,36 @@ bool MergingPipeline::estimateTransform(double confidence)
   return true;
 }
 
-}  // combine_grids
+bool MergingPipeline::composeGrids()
+{
+  ROS_ASSERT(images_.size() == transforms_.size());
+  ROS_ASSERT(images_.size() == grids_.size());
+
+  if (images_.empty()) {
+    return false;
+  }
+
+  ROS_DEBUG("warping grids");
+  internal::GridWarper warper;
+  std::vector<cv::Mat> imgs_warped;
+  imgs_warped.reserve(images_.size());
+  std::vector<cv::Rect> rois(images_.size());
+
+  for (size_t i = 0; i < images_.size(); ++i) {
+    if (!transforms_[i].empty()) {
+      imgs_warped.emplace_back();
+      rois[i] = warper.warp(images_[i], transforms_[i], imgs_warped.back());
+    }
+  }
+
+  ROS_DEBUG("compositing result grid");
+  internal::GridCompositor compositor;
+  result_ = compositor.compose(imgs_warped, rois);
+  result_->info.map_load_time = ros::Time::now();
+  // TODO is this correct?
+  result_->info.resolution = grids_[0]->info.resolution;
+
+  return true;
+}
+
+}  // namespace combine_grids

@@ -34,67 +34,50 @@
  *
  *********************************************************************/
 
-#ifndef MERGING_PIPELINE_H_
-#define MERGING_PIPELINE_H_
+#include <combine_grids/grid_compositor.h>
 
-#include <vector>
-
-#include <geometry_msgs/Transform.h>
-#include <nav_msgs/OccupancyGrid.h>
-
-#include <opencv2/core/utility.hpp>
+#include <opencv2/stitching/detail/util.hpp>
 
 namespace combine_grids
 {
-/**
- * @brief Pipeline for merging overlapping occupancy grids
- * @details Pipeline works on internally stored grids.
- */
-class MergingPipeline
+namespace internal
 {
-public:
-  template <typename InputIt>
-  bool feed(InputIt grids_begin, InputIt grids_end);
-  bool estimateTransform(double confidence = 1.0);
-  bool composeGrids();
-
-  std::vector<geometry_msgs::Transform> getTransforms();
-  nav_msgs::OccupancyGrid::Ptr getResult();
-
-private:
-  std::vector<nav_msgs::OccupancyGrid::ConstPtr> grids_;
-  std::vector<cv::Mat> images_;
-  std::vector<cv::Mat> transforms_;
-  nav_msgs::OccupancyGrid::Ptr result_;
-};
-
-template <typename InputIt>
-bool MergingPipeline::feed(InputIt grids_begin, InputIt grids_end)
+nav_msgs::OccupancyGrid::Ptr GridCompositor::compose(
+    const std::vector<cv::Mat>& grids, const std::vector<cv::Rect>& rois)
 {
-  static_assert(std::is_assignable<nav_msgs::OccupancyGrid::ConstPtr&,
-                                   decltype(*grids_begin)>::value,
-                "grids_begin must point to nav_msgs::OccupancyGrid::ConstPtr "
-                "data");
+  nav_msgs::OccupancyGrid::Ptr result_grid(new nav_msgs::OccupancyGrid());
 
-  size_t size = std::distance(grids_begin, grids_end);
-  images_.clear();
-  images_.reserve(size);
-  grids_.clear();
-  grids_.reserve(size);
-  for (InputIt it = grids_begin; it != grids_end; ++it) {
-    if (*it && !(*it)->data.empty()) {
-      grids_.push_back(*it);
-      /* convert to opencv images. it creates only a view for opencv and does
-       * not copy or own actual data. */
-      images_.emplace_back(it->info.height, it->info.width, CV_8UC1,
-                           it->data.data());
-    } else {
-      grids_.emplace_back();
-      images_.emplace_back();
-    }
+  std::vector<cv::Point> corners;
+  corners.reserve(grids.size());
+  std::vector<cv::Size> sizes;
+  sizes.reserve(grids.size());
+  for (auto& roi : rois) {
+    corners.push_back(roi.tl());
+    sizes.push_back(roi.size());
   }
+
+  cv::Rect dst_roi = cv::detail::resultRoi(corners, sizes);
+  // allocate new grid and create view for opencv
+  result_grid.reset();
+  result_grid->info.width = static_cast<uint>(dst_roi.width);
+  result_grid->info.height = static_cast<uint>(dst_roi.height);
+  result_grid->data.resize(static_cast<size_t>(dst_roi.area()));
+  cv::Mat result(dst_roi.size(), CV_8S, result_grid->data.data());
+
+  for (size_t i = 0; i < grids.size(); ++i) {
+    // we need to compensate global offset
+    cv::Rect roi = cv::Rect(corners[i] - dst_roi.tl(), sizes[i]);
+    cv::Mat result_roi(result, roi);
+    // reinterpret warped matrix as signed
+    // we will not change this matrix, but opencv does not supportc const matrices
+    cv::Mat warped_signed (grids[i].size(), CV_8S, const_cast<uchar*>(grids[i].ptr()));
+    // compose img into result matrix
+    cv::max(result_roi, warped_signed, result_roi);
+  }
+
+  return result_grid;
 }
 
-}  // namespace combine_grids
+}  // namespace internal
 
-#endif  // MERGING_PIPELINE_H_
+}  // namespace combine_grids
