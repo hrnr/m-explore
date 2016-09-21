@@ -37,8 +37,8 @@
 #include <combine_grids/merging_pipeline.h>
 
 #include <combine_grids/features_matcher.h>
-#include <combine_grids/grid_warper.h>
 #include <combine_grids/grid_compositor.h>
+#include <combine_grids/grid_warper.h>
 #include <combine_grids/transform_estimator.h>
 
 #include <ros/assert.h>
@@ -94,21 +94,21 @@ bool MergingPipeline::estimateTransform(double confidence)
   transforms_.clear();
   transforms_.resize(images_.size());
   size_t i = 0;
-  for (size_t j : good_indices) {
-    transforms_[j] = transforms[i].R;
+  for (auto& j : good_indices) {
+    transforms_[static_cast<size_t>(j)] = transforms[i].R;
     ++i;
   }
 
   return true;
 }
 
-bool MergingPipeline::composeGrids()
+nav_msgs::OccupancyGrid::Ptr MergingPipeline::composeGrids()
 {
   ROS_ASSERT(images_.size() == transforms_.size());
   ROS_ASSERT(images_.size() == grids_.size());
 
   if (images_.empty()) {
-    return false;
+    return nullptr;
   }
 
   ROS_DEBUG("warping grids");
@@ -125,13 +125,39 @@ bool MergingPipeline::composeGrids()
   }
 
   ROS_DEBUG("compositing result grid");
+  nav_msgs::OccupancyGrid::Ptr result;
   internal::GridCompositor compositor;
-  result_ = compositor.compose(imgs_warped, rois);
-  result_->info.map_load_time = ros::Time::now();
+  result = compositor.compose(imgs_warped, rois);
+  result->info.map_load_time = ros::Time::now();
   // TODO is this correct?
-  result_->info.resolution = grids_[0]->info.resolution;
+  result->info.resolution = grids_[0]->info.resolution;
 
-  return true;
+  return result;
+}
+
+std::vector<geometry_msgs::Transform> MergingPipeline::getTransforms()
+{
+  std::vector<geometry_msgs::Transform> result;
+  result.reserve(transforms_.size());
+
+  for (auto& transform : transforms_) {
+    ROS_ASSERT(transform.type() == CV_64F);
+    geometry_msgs::Transform ros_transform;
+    ros_transform.translation.x = transform.at<double>(0, 2);
+    ros_transform.translation.y = transform.at<double>(1, 2);
+    ros_transform.translation.z = 0.;
+
+    // our rotation is in fact only 2D, thus quaternion can be simplified
+    double s = std::sqrt(2. * transform.at<double>(0, 0) + 1.);
+    ros_transform.rotation.w = 0.5 * s;
+    ros_transform.rotation.x = 0.;
+    ros_transform.rotation.y = 0.;
+    ros_transform.rotation.z = 2. * transform.at<double>(1, 0) * (0.5 / s);
+
+    result.push_back(ros_transform);
+  }
+
+  return result;
 }
 
 }  // namespace combine_grids

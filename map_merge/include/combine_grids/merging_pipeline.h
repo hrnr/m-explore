@@ -54,33 +54,30 @@ class MergingPipeline
 {
 public:
   template <typename InputIt>
-  bool feed(InputIt grids_begin, InputIt grids_end);
+  void feed(InputIt grids_begin, InputIt grids_end);
   bool estimateTransform(double confidence = 1.0);
-  bool composeGrids();
+  nav_msgs::OccupancyGrid::Ptr composeGrids();
 
   std::vector<geometry_msgs::Transform> getTransforms();
-  nav_msgs::OccupancyGrid::Ptr getResult();
 
 private:
   std::vector<nav_msgs::OccupancyGrid::ConstPtr> grids_;
   std::vector<cv::Mat> images_;
   std::vector<cv::Mat> transforms_;
-  nav_msgs::OccupancyGrid::Ptr result_;
 };
 
 template <typename InputIt>
-bool MergingPipeline::feed(InputIt grids_begin, InputIt grids_end)
+void MergingPipeline::feed(InputIt grids_begin, InputIt grids_end)
 {
   static_assert(std::is_assignable<nav_msgs::OccupancyGrid::ConstPtr&,
                                    decltype(*grids_begin)>::value,
                 "grids_begin must point to nav_msgs::OccupancyGrid::ConstPtr "
                 "data");
 
-  size_t size = std::distance(grids_begin, grids_end);
+  // we can't reserve anything, because we want to support just InputIt and
+  // their guarantee validity for only single-pass algos
   images_.clear();
-  images_.reserve(size);
   grids_.clear();
-  grids_.reserve(size);
   for (InputIt it = grids_begin; it != grids_end; ++it) {
     if (*it && !(*it)->data.empty()) {
       grids_.push_back(*it);
