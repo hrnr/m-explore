@@ -59,10 +59,6 @@ bool MergingPipeline::estimateTransform(double confidence)
   cv::Ptr<cv::detail::Estimator> estimator =
       cv::makePtr<internal::AffineBasedEstimator>();
 
-  if (images_.size() < 2) {
-    return false;
-  }
-
   /* find features in images */
   ROS_DEBUG("computing features");
   image_features.reserve(images_.size());
@@ -115,12 +111,14 @@ nav_msgs::OccupancyGrid::Ptr MergingPipeline::composeGrids()
   internal::GridWarper warper;
   std::vector<cv::Mat> imgs_warped;
   imgs_warped.reserve(images_.size());
-  std::vector<cv::Rect> rois(images_.size());
+  std::vector<cv::Rect> rois;
+  rois.reserve(images_.size());
 
   for (size_t i = 0; i < images_.size(); ++i) {
     if (!transforms_[i].empty()) {
       imgs_warped.emplace_back();
-      rois[i] = warper.warp(images_[i], transforms_[i], imgs_warped.back());
+      rois.emplace_back(
+          warper.warp(images_[i], transforms_[i], imgs_warped.back()));
     }
   }
 
@@ -141,6 +139,11 @@ std::vector<geometry_msgs::Transform> MergingPipeline::getTransforms()
   result.reserve(transforms_.size());
 
   for (auto& transform : transforms_) {
+    if (transform.empty()) {
+      result.emplace_back();
+      continue;
+    }
+
     ROS_ASSERT(transform.type() == CV_64F);
     geometry_msgs::Transform ros_transform;
     ros_transform.translation.x = transform.at<double>(0, 2);

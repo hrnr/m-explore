@@ -83,8 +83,8 @@ void MergingPipeline::feed(InputIt grids_begin, InputIt grids_end)
       grids_.push_back(*it);
       /* convert to opencv images. it creates only a view for opencv and does
        * not copy or own actual data. */
-      images_.emplace_back(it->info.height, it->info.width, CV_8UC1,
-                           it->data.data());
+      images_.emplace_back((*it)->info.height, (*it)->info.width, CV_8UC1,
+                           const_cast<signed char*>((*it)->data.data()));
     } else {
       grids_.emplace_back();
       images_.emplace_back();

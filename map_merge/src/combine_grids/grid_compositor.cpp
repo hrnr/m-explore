@@ -38,6 +38,8 @@
 
 #include <opencv2/stitching/detail/util.hpp>
 
+#include <ros/assert.h>
+
 namespace combine_grids
 {
 namespace internal
@@ -45,6 +47,8 @@ namespace internal
 nav_msgs::OccupancyGrid::Ptr GridCompositor::compose(
     const std::vector<cv::Mat>& grids, const std::vector<cv::Rect>& rois)
 {
+  ROS_ASSERT(grids.size() == rois.size());
+
   nav_msgs::OccupancyGrid::Ptr result_grid(new nav_msgs::OccupancyGrid());
 
   std::vector<cv::Point> corners;
@@ -55,13 +59,12 @@ nav_msgs::OccupancyGrid::Ptr GridCompositor::compose(
     corners.push_back(roi.tl());
     sizes.push_back(roi.size());
   }
-
   cv::Rect dst_roi = cv::detail::resultRoi(corners, sizes);
-  // allocate new grid and create view for opencv
-  result_grid.reset();
+
   result_grid->info.width = static_cast<uint>(dst_roi.width);
   result_grid->info.height = static_cast<uint>(dst_roi.height);
-  result_grid->data.resize(static_cast<size_t>(dst_roi.area()));
+  result_grid->data.resize(static_cast<size_t>(dst_roi.area()), -1);
+  // create view for opencv pointing to newly allocated grid
   cv::Mat result(dst_roi.size(), CV_8S, result_grid->data.data());
 
   for (size_t i = 0; i < grids.size(); ++i) {
@@ -69,7 +72,7 @@ nav_msgs::OccupancyGrid::Ptr GridCompositor::compose(
     cv::Rect roi = cv::Rect(corners[i] - dst_roi.tl(), sizes[i]);
     cv::Mat result_roi(result, roi);
     // reinterpret warped matrix as signed
-    // we will not change this matrix, but opencv does not supportc const matrices
+    // we will not change this matrix, but opencv does not support const matrices
     cv::Mat warped_signed (grids[i].size(), CV_8S, const_cast<uchar*>(grids[i].ptr()));
     // compose img into result matrix
     cv::max(result_roi, warped_signed, result_roi);

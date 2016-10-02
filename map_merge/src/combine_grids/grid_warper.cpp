@@ -38,11 +38,12 @@
 
 #include <opencv2/stitching/detail/warpers.hpp>
 
+#include <ros/assert.h>
+
 namespace combine_grids
 {
 namespace internal
 {
-
 cv::Rect GridWarper::warp(const cv::Mat& grid, const cv::Mat& transform,
                           cv::Mat& warped_grid)
 {
@@ -55,6 +56,7 @@ cv::Rect GridWarper::warp(const cv::Mat& grid, const cv::Mat& transform,
   warpAffine(grid, warped_grid, H, roi.size(), cv::INTER_NEAREST,
              cv::BORDER_CONSTANT,
              cv::Scalar::all(255) /* this is -1 for signed char */);
+  ROS_ASSERT(roi.size() == warped_grid.size());
 
   return roi;
 }
@@ -63,15 +65,16 @@ cv::Rect GridWarper::warpRoi(const cv::Mat& grid, const cv::Mat& transform)
 {
   cv::Ptr<cv::detail::PlaneWarper> warper =
       cv::makePtr<cv::detail::PlaneWarper>();
+  cv::Mat H;
+  transform.convertTo(H, CV_32F);
 
   // separate rotation and translation for plane warper
+  // 3D translation
   cv::Mat T = cv::Mat::zeros(3, 1, CV_32F);
-  cv::Mat R;
-  transform.convertTo(R, CV_32F);
-  T.at<float>(0,0) = R.at<float>(0,2);
-  T.at<float>(1,0) = R.at<float>(1,2);
-  R.at<float>(0,2) = 0.f;
-  R.at<float>(1,2) = 0.f;
+  H.colRange(2, 3).rowRange(0, 2).copyTo(T.rowRange(0, 2));
+  // 3D rotation
+  cv::Mat R = cv::Mat::eye(3, 3, CV_32F);
+  H.colRange(0, 2).copyTo(R.rowRange(0, 2).colRange(0, 2));
 
   return warper->warpRoi(grid.size(), cv::Mat::eye(3, 3, CV_32F), R, T);
 }
