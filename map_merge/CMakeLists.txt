@@ -8,7 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   map_msgs
   tf
-  roslaunch
+  tf2_geometry_msgs
 )
 
 find_package(Boost REQUIRED COMPONENTS thread)
@@ -80,13 +80,14 @@ install(DIRECTORY launch/
 ## Testing ##
 #############
 if(CATKIN_ENABLE_TESTING)
-  catkin_add_gtest(combine_grid_tests
-    test/test_grid_utils.cpp
-  )
+  find_package(roslaunch REQUIRED)
+
+  catkin_add_gtest(combine_grid_tests test/test_grid_utils.cpp)
   target_link_libraries(combine_grid_tests combine_grids ${catkin_LIBRARIES})
+  catkin_add_gtest(test_merging_pipeline test/test_merging_pipeline.cpp)
+  target_link_libraries(test_merging_pipeline combine_grids ${catkin_LIBRARIES})
 
   # test all launch files
   roslaunch_add_file_check(launch)
   roslaunch_add_file_check(launch/experiments)
 endif()
-
