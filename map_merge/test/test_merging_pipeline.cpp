@@ -206,6 +206,18 @@ TEST(MergingPipeline, getTransformsInternal)
   }
 }
 
+TEST(MergingPipeline, setEmptyTransforms)
+{
+  constexpr size_t size = 2;
+  std::vector<nav_msgs::OccupancyGridConstPtr> maps(size);
+  std::vector<geometry_msgs::Transform> transforms(size);
+  combine_grids::MergingPipeline merger;
+  merger.feed(maps.begin(), maps.end());
+  merger.setTransforms(transforms.begin(), transforms.end());
+  EXPECT_EQ(merger.composeGrids(), nullptr);
+  EXPECT_EQ(merger.getTransforms().size(), size);
+}
+
 int main(int argc, char** argv)
 {
   ros::Time::init();

@@ -122,6 +122,10 @@ nav_msgs::OccupancyGrid::Ptr MergingPipeline::composeGrids()
     }
   }
 
+  if (imgs_warped.empty()) {
+    return nullptr;
+  }
+
   ROS_DEBUG("compositing result grid");
   nav_msgs::OccupancyGrid::Ptr result;
   internal::GridCompositor compositor;
