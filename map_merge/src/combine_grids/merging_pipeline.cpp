@@ -133,7 +133,7 @@ nav_msgs::OccupancyGrid::Ptr MergingPipeline::composeGrids()
   return result;
 }
 
-std::vector<geometry_msgs::Transform> MergingPipeline::getTransforms()
+std::vector<geometry_msgs::Transform> MergingPipeline::getTransforms() const
 {
   std::vector<geometry_msgs::Transform> result;
   result.reserve(transforms_.size());
@@ -151,11 +151,12 @@ std::vector<geometry_msgs::Transform> MergingPipeline::getTransforms()
     ros_transform.translation.z = 0.;
 
     // our rotation is in fact only 2D, thus quaternion can be simplified
-    double s = std::sqrt(2. * transform.at<double>(0, 0) + 1.);
-    ros_transform.rotation.w = 0.5 * s;
+    double a = transform.at<double>(0, 0);
+    double b = transform.at<double>(1, 0);
+    ros_transform.rotation.w = std::sqrt(2. + 2. * a) * 0.5;
     ros_transform.rotation.x = 0.;
     ros_transform.rotation.y = 0.;
-    ros_transform.rotation.z = 2. * transform.at<double>(1, 0) * (0.5 / s);
+    ros_transform.rotation.z = std::copysign(std::sqrt(2. - 2. * a) * 0.5, b);
 
     result.push_back(ros_transform);
   }

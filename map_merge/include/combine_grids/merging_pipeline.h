@@ -58,7 +58,9 @@ public:
   bool estimateTransform(double confidence = 1.0);
   nav_msgs::OccupancyGrid::Ptr composeGrids();
 
-  std::vector<geometry_msgs::Transform> getTransforms();
+  std::vector<geometry_msgs::Transform> getTransforms() const;
+  template <typename ForwardIt>
+  bool setTransforms(ForwardIt transforms_begin, ForwardIt transforms_end);
 
 private:
   std::vector<nav_msgs::OccupancyGrid::ConstPtr> grids_;
@@ -89,6 +91,39 @@ void MergingPipeline::feed(InputIt grids_begin, InputIt grids_end)
       grids_.emplace_back();
       images_.emplace_back();
     }
+  }
+}
+
+template <typename ForwardIt>
+bool MergingPipeline::setTransforms(ForwardIt transforms_begin,
+                                    ForwardIt transforms_end)
+{
+  static_assert(std::is_assignable<geometry_msgs::Transform&,
+                                   decltype(*transforms_begin)>::value,
+                "transforms_begin must point to geometry_msgs::Transform "
+                "data");
+
+  size_t size = std::distance(transforms_begin, transforms_end);
+  if (size != images_.size()) {
+    return false;
+  }
+  transforms_.clear();
+  transforms_.reserve(size);
+  for (ForwardIt it = transforms_begin; it != transforms_end; ++it) {
+    const geometry_msgs::Quaternion& q = it->rotation;
+    double s = 2.0 / (q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
+    double a = 1 - q.y * q.y * s - q.z * q.z * s;
+    double b = q.x * q.y * s + q.z * q.w * s;
+    double tx = it->translation.x;
+    double ty = it->translation.y;
+    cv::Mat transform = cv::Mat::eye(3, 3, CV_64F);
+    transform.at<double>(0, 0) = transform.at<double>(1, 1) = a;
+    transform.at<double>(1, 0) = b;
+    transform.at<double>(0, 1) = -b;
+    transform.at<double>(0, 2) = tx;
+    transform.at<double>(1, 2) = ty;
+
+    transforms_.emplace_back(std::move(transform));
   }
 }
 
