@@ -47,12 +47,13 @@ namespace internal
 cv::Rect GridWarper::warp(const cv::Mat& grid, const cv::Mat& transform,
                           cv::Mat& warped_grid)
 {
+  ROS_ASSERT(transform.type() == CV_64F);
   cv::Mat H;
   invertAffineTransform(transform.rowRange(0, 2), H);
   cv::Rect roi = warpRoi(grid, H);
   // shift top left corner for warp affine (otherwise the image is cropped)
-  H.at<float>(0, 2) -= roi.tl().x;
-  H.at<float>(1, 2) -= roi.tl().y;
+  H.at<double>(0, 2) -= roi.tl().x;
+  H.at<double>(1, 2) -= roi.tl().y;
   warpAffine(grid, warped_grid, H, roi.size(), cv::INTER_NEAREST,
              cv::BORDER_CONSTANT,
              cv::Scalar::all(255) /* this is -1 for signed char */);
