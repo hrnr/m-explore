@@ -49,6 +49,10 @@ const std::array<const char*, 13> hector_maps = {
     "map27.pgm", "map28.pgm", "map31.pgm",
 };
 
+const std::array<const char*, 2> synthetic_maps = {
+    "map05.pgm", "map05_rotated+30deg_translated+0-402.pgm",
+};
+
 constexpr bool verbose_tests = true;
 
 TEST(MergingPipeline, canStich0Grid)
@@ -115,6 +119,35 @@ TEST(MergingPipeline, canStich2Grids)
     }
     saveMap("test_canStich2Grids.pgm", merged_grid);
   }
+}
+
+TEST(MergingPipeline, estimationAccuracy)
+{
+  auto maps = loadMaps(synthetic_maps.begin(), synthetic_maps.end());
+  combine_grids::MergingPipeline merger;
+  merger.feed(maps.begin(), maps.end());
+  merger.estimateTransform();
+  auto merged_grid = merger.composeGrids();
+
+  // sanity of merged grid
+  ASSERT_TRUE(static_cast<bool>(merged_grid));
+  EXPECT_FALSE(merged_grid->data.empty());
+  EXPECT_EQ((merged_grid->info.width) * (merged_grid->info.height),
+            merged_grid->data.size());
+  // transforms
+  auto transforms = merger.getTransforms();
+  EXPECT_EQ(transforms.size(), synthetic_maps.size());
+  tf2::Transform t;
+  tf2::fromMsg(transforms[0], t);
+  EXPECT_EQ(tf2::Transform::getIdentity(), t);
+  tf2::fromMsg(transforms[1], t);
+  double angle = 0.523599 /* 30 deg in rads*/;
+  // translation after aplying rotation
+  double tx = 649.8655183693847;
+  double ty = 23.81615210961355;
+  EXPECT_NEAR(angle, t.getRotation().getAngle(), 1e-2);
+  EXPECT_NEAR(tx, t.getOrigin().x(), 5);
+  EXPECT_NEAR(ty, t.getOrigin().y(), 5);
 }
 
 TEST(MergingPipeline, transformsRoundTrip)
