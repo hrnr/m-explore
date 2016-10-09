@@ -34,15 +34,13 @@
  *
  *********************************************************************/
 
-#include <combine_grids/merging_pipeline.h>
-
-#include <combine_grids/features_matcher.h>
 #include <combine_grids/grid_compositor.h>
 #include <combine_grids/grid_warper.h>
-#include <combine_grids/transform_estimator.h>
-
+#include <combine_grids/merging_pipeline.h>
 #include <ros/assert.h>
 #include <ros/console.h>
+#include "../opencv_backport/stitching/matchers.hpp"
+#include "../opencv_backport/stitching/motion_estimators.hpp"
 
 namespace combine_grids
 {
@@ -52,12 +50,17 @@ bool MergingPipeline::estimateTransform(double confidence)
   std::vector<cv::detail::MatchesInfo> pairwise_matches;
   std::vector<cv::detail::CameraParams> transforms;
   std::vector<int> good_indices;
+  // TODO ORB tuning
   cv::Ptr<cv::detail::FeaturesFinder> finder =
       cv::makePtr<cv::detail::OrbFeaturesFinder>();
   cv::Ptr<cv::detail::FeaturesMatcher> matcher =
-      cv::makePtr<internal::AffineBestOf2NearestMatcher>();
-  cv::Ptr<cv::detail::Estimator> estimator =
-      cv::makePtr<internal::AffineBasedEstimator>();
+      cv::makePtr<cv_backport::AffineBestOf2NearestMatcher>();
+  cv::Ptr<cv_backport::Estimator> estimator =
+      cv::makePtr<cv_backport::AffineBasedEstimator>();
+
+  if(images_.empty()) {
+    return true;
+  }
 
   /* find features in images */
   ROS_DEBUG("computing features");
@@ -77,8 +80,8 @@ bool MergingPipeline::estimateTransform(double confidence)
 
   /* use only matches that has enough confidence. leave out matches that are not
    * connected (small components) */
-  good_indices = cv::detail::leaveBiggestComponent(
-      image_features, pairwise_matches, static_cast<float>(confidence));
+  good_indices = cv_backport::leaveBiggestComponent(
+      image_features, pairwise_matches, static_cast<float>(0.2));
 
   /* estimate transform */
   ROS_DEBUG("estimating final transform");

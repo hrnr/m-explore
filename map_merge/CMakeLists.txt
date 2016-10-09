@@ -51,15 +51,13 @@ include_directories(
 
 # we want static linking for now
 add_library(combine_grids STATIC
-  src/combine_grids.cpp
-  src/coordinate_conversions.cpp
-  src/combine_grids/estimate_transform.cpp
-  src/combine_grids/features_matcher.cpp
-  src/combine_grids/estimate_rigid_transform.cpp
-  src/combine_grids/transform_estimator.cpp
   src/combine_grids/merging_pipeline.cpp
   src/combine_grids/grid_warper.cpp
   src/combine_grids/grid_compositor.cpp
+  src/opencv_backport/calib3d/ptsetreg.cpp
+  src/opencv_backport/calib3d/levmarq.cpp
+  src/opencv_backport/stitching/matchers.cpp
+  src/opencv_backport/stitching/motion_estimators.cpp
 )
 target_link_libraries(combine_grids ${OpenCV_LIBRARIES})
 
@@ -82,8 +80,6 @@ install(DIRECTORY launch/
 if(CATKIN_ENABLE_TESTING)
   find_package(roslaunch REQUIRED)
 
-  catkin_add_gtest(combine_grid_tests test/test_grid_utils.cpp)
-  target_link_libraries(combine_grid_tests combine_grids ${catkin_LIBRARIES})
   catkin_add_gtest(test_merging_pipeline test/test_merging_pipeline.cpp)
   target_link_libraries(test_merging_pipeline combine_grids ${catkin_LIBRARIES})
 

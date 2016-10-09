@@ -39,28 +39,54 @@
 
 #include <opencv2/stitching/detail/matchers.hpp>
 
-namespace combine_grids
-{
-namespace internal
+namespace cv_backport
 {
 /** @brief Features matcher similar to cv::detail::BestOf2NearestMatcher which
 finds two best matches for each feature and leaves the best one only if the
 ratio between descriptor distances is greater than the threshold match_conf.
 
-Unlike cv::detail::BestOf2NearestMatcher this matcher is using affine
-transformation to estimate homography.
+Unlike cv::detail::BestOf2NearestMatcher this matcher uses affine
+transformation (affine trasformation estimate will be placed in matches_info).
 
 @sa cv::detail::FeaturesMatcher cv::detail::BestOf2NearestMatcher
  */
-class AffineBestOf2NearestMatcher : public cv::detail::BestOf2NearestMatcher
+class CV_EXPORTS AffineBestOf2NearestMatcher
+    : public cv::detail::BestOf2NearestMatcher
 {
+public:
+  /** @brief Constructs a "best of 2 nearest" matcher that expects affine
+  trasformation
+  between images
+
+  @param full_affine whether to use full affine transformation with 6 degress of
+  freedom or reduced
+  transformation with 4 degrees of freedom using only rotation, translation and
+  uniform scaling
+  @param try_use_gpu Should try to use GPU or not
+  @param match_conf Match distances ration threshold
+  @param num_matches_thresh1 Minimum number of matches required for the 2D
+  affine transform
+  estimation used in the inliers classification step
+
+  @sa cv::estimateAffine2D cv::estimateAffinePartial2D
+   */
+  AffineBestOf2NearestMatcher(bool full_affine = false,
+                              bool try_use_gpu = false, float match_conf = 0.3f,
+                              int num_matches_thresh1 = 6)
+    : BestOf2NearestMatcher(try_use_gpu, match_conf, num_matches_thresh1,
+                            num_matches_thresh1)
+    , full_affine_(full_affine)
+  {
+  }
+
 protected:
   void match(const cv::detail::ImageFeatures &features1,
              const cv::detail::ImageFeatures &features2,
              cv::detail::MatchesInfo &matches_info);
+
+  bool full_affine_;
 };
 
-}  // namespace internal
-}  // namespace combine_grids
+}  // namespace cv_backport
 
 #endif  // FEATURES_MATCHER_H_
