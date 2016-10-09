@@ -81,7 +81,7 @@ bool MergingPipeline::estimateTransform(double confidence)
   /* use only matches that has enough confidence. leave out matches that are not
    * connected (small components) */
   good_indices = cv_backport::leaveBiggestComponent(
-      image_features, pairwise_matches, static_cast<float>(0.2));
+      image_features, pairwise_matches, static_cast<float>(confidence));
 
   /* estimate transform */
   ROS_DEBUG("estimating final transform");
