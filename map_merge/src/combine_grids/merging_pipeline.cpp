@@ -57,8 +57,10 @@ bool MergingPipeline::estimateTransform(double confidence)
       cv::makePtr<cv_backport::AffineBestOf2NearestMatcher>();
   cv::Ptr<cv_backport::Estimator> estimator =
       cv::makePtr<cv_backport::AffineBasedEstimator>();
+  cv::Ptr<cv_backport::BundleAdjusterBase> adjuster =
+      cv::makePtr<cv_backport::BundleAdjusterAffinePartial>();
 
-  if(images_.empty()) {
+  if (images_.empty()) {
     return true;
   }
 
@@ -84,9 +86,20 @@ bool MergingPipeline::estimateTransform(double confidence)
       image_features, pairwise_matches, static_cast<float>(confidence));
 
   /* estimate transform */
-  ROS_DEBUG("estimating final transform");
+  ROS_DEBUG("calculating transforms in global reference frame");
   // note: currently used estimator never fails
   if (!(*estimator)(image_features, pairwise_matches, transforms)) {
+    return false;
+  }
+
+  /* levmarq optimization */
+  // openCV just accepts float transforms
+  for (auto& transform : transforms) {
+    transform.R.convertTo(transform.R, CV_32F);
+  }
+  ROS_DEBUG("optimizing global transforms error");
+  adjuster->setConfThresh(confidence);
+  if (!(*adjuster)(image_features, pairwise_matches, transforms)) {
     return false;
   }
 
@@ -94,7 +107,8 @@ bool MergingPipeline::estimateTransform(double confidence)
   transforms_.resize(images_.size());
   size_t i = 0;
   for (auto& j : good_indices) {
-    transforms_[static_cast<size_t>(j)] = transforms[i].R;
+    // we want to work with transforms as doubles
+    transforms[i].R.convertTo(transforms_[static_cast<size_t>(j)], CV_64F);
     ++i;
   }
 
