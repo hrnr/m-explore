@@ -121,9 +121,10 @@ bool MergingPipeline::estimateTransform(double confidence)
   for (auto& transform : transforms) {
     transform.R.convertTo(transform.R, CV_32F);
   }
-  ROS_DEBUG("optimizing global transforms error");
+  ROS_DEBUG("optimizing global transforms");
   adjuster->setConfThresh(confidence);
   if (!(*adjuster)(image_features, pairwise_matches, transforms)) {
+    ROS_WARN("Bundle adjusting failed. Could not estimate transforms.");
     return false;
   }
 
