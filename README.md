@@ -1,6 +1,6 @@
 # m-explore
 
-[![Build Status](http://build.ros.org/job/Jdev__m_explore__ubuntu_trusty_amd64/1/badge/icon)](http://build.ros.org/job/Jdev__m_explore__ubuntu_trusty_amd64/1/)
+[![Build Status](http://build.ros.org/job/Jdev__m_explore__ubuntu_trusty_amd64/badge/icon)](http://build.ros.org/job/Jdev__m_explore__ubuntu_trusty_amd64)
 
 ROS packages for multi robot exploration.
 
