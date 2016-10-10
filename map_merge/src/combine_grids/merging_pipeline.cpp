@@ -42,6 +42,10 @@
 #include "../opencv_backport/stitching/matchers.hpp"
 #include "../opencv_backport/stitching/motion_estimators.hpp"
 
+#ifndef NDEBUG
+#include <opencv2/imgcodecs.hpp>
+#endif
+
 namespace combine_grids
 {
 bool MergingPipeline::estimateTransform(double confidence)
@@ -79,6 +83,26 @@ bool MergingPipeline::estimateTransform(double confidence)
   ROS_DEBUG("pairwise matching features");
   (*matcher)(image_features, pairwise_matches);
   matcher->collectGarbage();
+
+#ifndef NDEBUG
+  for (auto& match_info : pairwise_matches) {
+    if (match_info.H.empty()) {
+      continue;
+    }
+    std::cout << match_info.src_img_idx << " " << match_info.dst_img_idx
+              << std::endl
+              << match_info.H << std::endl;
+    cv::Mat img;
+    cv::drawMatches(images_[size_t(match_info.src_img_idx)],
+                    image_features[size_t(match_info.src_img_idx)].keypoints,
+                    images_[size_t(match_info.dst_img_idx)],
+                    image_features[size_t(match_info.dst_img_idx)].keypoints,
+                    match_info.matches, img);
+    cv::imwrite(std::to_string(match_info.src_img_idx) + "_" +
+                    std::to_string(match_info.dst_img_idx) + "_matches.png",
+                img);
+  }
+#endif
 
   /* use only matches that has enough confidence. leave out matches that are not
    * connected (small components) */
