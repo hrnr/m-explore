@@ -106,17 +106,11 @@ TEST(MergingPipeline, canStich2Grids)
   EXPECT_FALSE(merged_grid->data.empty());
   EXPECT_EQ((merged_grid->info.width) * (merged_grid->info.height),
             merged_grid->data.size());
-  // transforms
-  auto transforms = merger.getTransforms();
-  EXPECT_EQ(transforms.size(), 2);
-  tf2::Transform t;
-  tf2::fromMsg(transforms[0], t);
-  EXPECT_EQ(tf2::Transform::getIdentity(), t);
+  // grid size should indicate sucessful merge
+  EXPECT_NEAR(2091, merged_grid->info.width, 30);
+  EXPECT_NEAR(2091, merged_grid->info.height, 30);
 
   if (verbose_tests) {
-    for (auto& transform : transforms) {
-      std::cout << transform << std::endl;
-    }
     saveMap("test_canStich2Grids.pgm", merged_grid);
   }
 }
