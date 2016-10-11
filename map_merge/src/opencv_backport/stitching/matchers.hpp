@@ -87,6 +87,27 @@ protected:
   bool full_affine_;
 };
 
+/** @brief AKAZE features finder.
+
+@sa detail::FeaturesFinder, AKAZE
+*/
+class CV_EXPORTS AKAZEFeaturesFinder : public cv::detail::FeaturesFinder
+{
+public:
+    AKAZEFeaturesFinder(int descriptor_type = cv::AKAZE::DESCRIPTOR_MLDB,
+                        int descriptor_size = 0,
+                        int descriptor_channels = 3,
+                        float threshold = 0.001f,
+                        int nOctaves = 4,
+                        int nOctaveLayers = 4,
+                        int diffusivity = cv::KAZE::DIFF_PM_G2);
+
+private:
+    void find(cv::InputArray image, cv::detail::ImageFeatures &features);
+
+    cv::Ptr<cv::AKAZE> akaze;
+};
+
 }  // namespace cv_backport
 
 #endif  // FEATURES_MATCHER_H_

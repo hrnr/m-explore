@@ -95,4 +95,25 @@ void AffineBestOf2NearestMatcher::match(const ImageFeatures &features1, const Im
     matches_info.H.at<double>(2, 2) = 1;
 }
 
+AKAZEFeaturesFinder::AKAZEFeaturesFinder(int descriptor_type,
+                                         int descriptor_size,
+                                         int descriptor_channels,
+                                         float threshold,
+                                         int nOctaves,
+                                         int nOctaveLayers,
+                                         int diffusivity)
+{
+    akaze = AKAZE::create(descriptor_type, descriptor_size, descriptor_channels,
+                          threshold, nOctaves, nOctaveLayers, diffusivity);
+}
+
+void AKAZEFeaturesFinder::find(InputArray image, detail::ImageFeatures &features)
+{
+    CV_Assert((image.type() == CV_8UC3) || (image.type() == CV_8UC1));
+    Mat descriptors;
+    UMat uimage = image.getUMat();
+    akaze->detectAndCompute(uimage, UMat(), features.keypoints, descriptors);
+    features.descriptors = descriptors.getUMat(ACCESS_READ);
+}
+
 }  // namespace cv_backport
