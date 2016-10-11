@@ -41,22 +41,20 @@
 #include <ros/console.h>
 #include "../opencv_backport/stitching/matchers.hpp"
 #include "../opencv_backport/stitching/motion_estimators.hpp"
-
-#ifndef NDEBUG
-#include <opencv2/imgcodecs.hpp>
-#endif
+#include "estimation_internal.h"
 
 namespace combine_grids
 {
-bool MergingPipeline::estimateTransform(double confidence)
+bool MergingPipeline::estimateTransform(FeatureType feature_type,
+                                        double confidence)
 {
   std::vector<cv::detail::ImageFeatures> image_features;
   std::vector<cv::detail::MatchesInfo> pairwise_matches;
   std::vector<cv::detail::CameraParams> transforms;
   std::vector<int> good_indices;
-  // TODO ORB tuning
+  // TODO investigate value translation effect on features
   cv::Ptr<cv::detail::FeaturesFinder> finder =
-      cv::makePtr<cv::detail::OrbFeaturesFinder>();
+      internal::chooseFeatureFinder(feature_type);
   cv::Ptr<cv::detail::FeaturesMatcher> matcher =
       cv::makePtr<cv_backport::AffineBestOf2NearestMatcher>();
   cv::Ptr<cv_backport::Estimator> estimator =
@@ -85,23 +83,7 @@ bool MergingPipeline::estimateTransform(double confidence)
   matcher->collectGarbage();
 
 #ifndef NDEBUG
-  for (auto& match_info : pairwise_matches) {
-    if (match_info.H.empty()) {
-      continue;
-    }
-    std::cout << match_info.src_img_idx << " " << match_info.dst_img_idx
-              << std::endl
-              << match_info.H << std::endl;
-    cv::Mat img;
-    cv::drawMatches(images_[size_t(match_info.src_img_idx)],
-                    image_features[size_t(match_info.src_img_idx)].keypoints,
-                    images_[size_t(match_info.dst_img_idx)],
-                    image_features[size_t(match_info.dst_img_idx)].keypoints,
-                    match_info.matches, img);
-    cv::imwrite(std::to_string(match_info.src_img_idx) + "_" +
-                    std::to_string(match_info.dst_img_idx) + "_matches.png",
-                img);
-  }
+  internal::writeDebugMatchingInfo(images_, image_features, pairwise_matches);
 #endif
 
   /* use only matches that has enough confidence. leave out matches that are not

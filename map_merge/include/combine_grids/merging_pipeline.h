@@ -46,6 +46,8 @@
 
 namespace combine_grids
 {
+enum class FeatureType { AKAZE, ORB, SURF };
+
 /**
  * @brief Pipeline for merging overlapping occupancy grids
  * @details Pipeline works on internally stored grids.
@@ -55,7 +57,8 @@ class MergingPipeline
 public:
   template <typename InputIt>
   void feed(InputIt grids_begin, InputIt grids_end);
-  bool estimateTransform(double confidence = 1.0);
+  bool estimateTransform(FeatureType feature = FeatureType::AKAZE,
+                         double confidence = 1.0);
   nav_msgs::OccupancyGrid::Ptr composeGrids();
 
   std::vector<geometry_msgs::Transform> getTransforms() const;
