@@ -7,7 +7,6 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   nav_msgs
   map_msgs
-  tf
   tf2_geometry_msgs
 )
 

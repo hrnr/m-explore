@@ -38,31 +38,34 @@
 #ifndef MAP_MERGE_H_
 #define MAP_MERGE_H_
 
-#include <vector>
-#include <unordered_map>
-#include <mutex>
+#include <atomic>
 #include <forward_list>
+#include <mutex>
+#include <unordered_map>
 
-#include <boost/thread.hpp>
-
-#include <ros/ros.h>
+#include <combine_grids/merging_pipeline.h>
 #include <geometry_msgs/Pose.h>
-#include <nav_msgs/OccupancyGrid.h>
 #include <map_msgs/OccupancyGridUpdate.h>
+#include <nav_msgs/OccupancyGrid.h>
+#include <ros/ros.h>
+#include <boost/thread.hpp>
 
 namespace map_merge
 {
-struct PosedMap {
+struct MapSubscription {
+  // protects consistency of writable_map and readonly_map
   std::mutex mutex;
 
-  geometry_msgs::Pose initial_pose;
-  nav_msgs::OccupancyGrid map;
+  geometry_msgs::Transform initial_pose;
+  nav_msgs::OccupancyGrid::Ptr writable_map;
+  // atomic protects reads in mapMerging and poseEstimation
+  std::atomic<nav_msgs::OccupancyGrid::ConstPtr> readonly_map;
 
   ros::Subscriber map_sub;
   ros::Subscriber map_updates_sub;
 };
 
-class MapMerging
+class MapMerge
 {
 private:
   ros::NodeHandle node_;
@@ -75,41 +78,31 @@ private:
   std::string robot_map_topic_;
   std::string robot_map_updates_topic_;
   std::string robot_namespace_;
+  std::string world_frame_;
   bool have_initial_poses_;
 
-  /* publisher */
-  nav_msgs::OccupancyGrid merged_map_;
+  // publishing
   ros::Publisher merged_map_publisher_;
-
   // maps robots namespaces to maps. does not own
-  std::unordered_map<std::string, PosedMap*> robots_;
+  std::unordered_map<std::string, MapSubscription*> robots_;
   // owns maps -- iterator safe
-  std::forward_list<PosedMap> maps_;
-  size_t maps_size_;
-  // does not own. view of only grids from PosedMaps for merging
-  typedef std::vector<std::reference_wrapper<nav_msgs::OccupancyGrid>>
-      grids_view_t;
-  // always contains all grids
-  grids_view_t all_grids_view_;
-  // aplicable only when estimations is on, will contain only grids which poses
-  // could be properly estimated
-  grids_view_t estimated_grids_view_;
-  // this must be locked exclusively when modifying grid_view_ or changing
-  // metadata (esp. size!) of OccupancyGrids inside. This could otherwise break
-  // horribly because merging algorithm needs to compute merged map size first.
-  boost::shared_mutex merging_mutex_;
+  std::forward_list<MapSubscription> subscriptions_;
+  size_t subscriptions_size_;
+  boost::shared_mutex subscriptions_mutex_;
+  combine_grids::MergingPipeline pipeline_;
+  std::mutex pipeline_mutex_;
 
   std::string robotNameFromTopic(const std::string& topic);
   bool isRobotMapTopic(const ros::master::TopicInfo& topic);
-  bool getInitPose(const std::string& name, geometry_msgs::Pose& pose);
+  bool getInitPose(const std::string& name, geometry_msgs::Transform& pose);
 
   void fullMapUpdate(const nav_msgs::OccupancyGrid::ConstPtr& msg,
-                     PosedMap& map);
+                     MapSubscription& map);
   void partialMapUpdate(const map_msgs::OccupancyGridUpdate::ConstPtr& msg,
-                        PosedMap& map);
+                        MapSubscription& map);
 
 public:
-  MapMerging();
+  MapMerge();
 
   void spin();
   void executetopicSubscribing();

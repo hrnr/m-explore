@@ -45,8 +45,8 @@
 
 namespace combine_grids
 {
-bool MergingPipeline::estimateTransform(FeatureType feature_type,
-                                        double confidence)
+bool MergingPipeline::estimateTransforms(FeatureType feature_type,
+                                         double confidence)
 {
   std::vector<cv::detail::ImageFeatures> image_features;
   std::vector<cv::detail::MatchesInfo> pairwise_matches;
