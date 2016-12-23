@@ -59,7 +59,7 @@ struct MapSubscription {
   geometry_msgs::Transform initial_pose;
   nav_msgs::OccupancyGrid::Ptr writable_map;
   // atomic protects reads in mapMerging and poseEstimation
-  std::atomic<nav_msgs::OccupancyGrid::ConstPtr> readonly_map;
+  boost::atomic<nav_msgs::OccupancyGrid::ConstPtr> readonly_map;
 
   ros::Subscriber map_sub;
   ros::Subscriber map_updates_sub;
