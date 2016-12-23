@@ -139,7 +139,7 @@ nav_msgs::OccupancyGrid::Ptr MergingPipeline::composeGrids()
   rois.reserve(images_.size());
 
   for (size_t i = 0; i < images_.size(); ++i) {
-    if (!transforms_[i].empty()) {
+    if (!transforms_[i].empty() && !images_[i].empty()) {
       imgs_warped.emplace_back();
       rois.emplace_back(
           warper.warp(images_[i], transforms_[i], imgs_warped.back()));

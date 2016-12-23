@@ -271,6 +271,20 @@ TEST(MergingPipeline, setEmptyTransforms)
   EXPECT_EQ(merger.getTransforms().size(), size);
 }
 
+/* empty image may end with identity transform. */
+TEST(MergingPipeline, emptyImageWithTransform)
+{
+  constexpr size_t size = 1;
+  std::vector<nav_msgs::OccupancyGridConstPtr> maps(size);
+  std::vector<geometry_msgs::Transform> transforms(size);
+  transforms[0].rotation.z = 1; // set transform to identity
+  combine_grids::MergingPipeline merger;
+  merger.feed(maps.begin(), maps.end());
+  merger.setTransforms(transforms.begin(), transforms.end());
+  EXPECT_EQ(merger.composeGrids(), nullptr);
+  EXPECT_EQ(merger.getTransforms().size(), size);
+}
+
 int main(int argc, char** argv)
 {
   ros::Time::init();
