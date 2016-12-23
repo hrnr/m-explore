@@ -40,6 +40,9 @@ nav_msgs::OccupancyGridConstPtr loadMap(const std::string& filename)
   p[0] = 100;
 
   cv::Mat img = cv::imread(filename, cv::IMREAD_GRAYSCALE);
+  if (img.empty()) {
+    throw std::runtime_error("could not load map");
+  }
   nav_msgs::OccupancyGridPtr grid{new nav_msgs::OccupancyGrid()};
   grid->info.width = static_cast<uint>(img.size().width);
   grid->info.height = static_cast<uint>(img.size().height);

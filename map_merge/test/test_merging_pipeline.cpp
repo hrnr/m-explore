@@ -53,6 +53,10 @@ const std::array<const char*, 2> synthetic_maps = {
     "map05.pgm", "map05_rotated+30deg_translated+0-402.pgm",
 };
 
+const std::array<const char*, 2> gmapping_maps = {
+    "2011-08-09-12-22-52.pgm", "2012-01-28-11-12-01.pgm",
+};
+
 constexpr bool verbose_tests = true;
 
 TEST(MergingPipeline, canStich0Grid)
@@ -60,7 +64,7 @@ TEST(MergingPipeline, canStich0Grid)
   std::vector<nav_msgs::OccupancyGridConstPtr> maps;
   combine_grids::MergingPipeline merger;
   merger.feed(maps.begin(), maps.end());
-  EXPECT_TRUE(merger.estimateTransform());
+  EXPECT_TRUE(merger.estimateTransforms());
   EXPECT_EQ(merger.composeGrids(), nullptr);
   EXPECT_EQ(merger.getTransforms().size(), 0);
 }
@@ -70,7 +74,7 @@ TEST(MergingPipeline, canStich1Grid)
   auto maps = loadMaps(hector_maps.begin(), hector_maps.end());
   combine_grids::MergingPipeline merger;
   merger.feed(maps.begin() + 1, maps.begin() + 2);
-  merger.estimateTransform();
+  merger.estimateTransforms();
   auto merged_grid = merger.composeGrids();
 
   // sanity of merged grid
@@ -98,7 +102,7 @@ TEST(MergingPipeline, canStich2Grids)
   auto maps = loadMaps(hector_maps.begin(), hector_maps.end());
   combine_grids::MergingPipeline merger;
   merger.feed(maps.begin(), maps.begin() + 2);
-  merger.estimateTransform();
+  merger.estimateTransforms();
   auto merged_grid = merger.composeGrids();
 
   // sanity of merged grid
@@ -115,12 +119,34 @@ TEST(MergingPipeline, canStich2Grids)
   }
 }
 
+TEST(MergingPipeline, canStichGridsGmapping)
+{
+  auto maps = loadMaps(gmapping_maps.begin(), gmapping_maps.end());
+  combine_grids::MergingPipeline merger;
+  merger.feed(maps.begin(), maps.end());
+  merger.estimateTransforms();
+  auto merged_grid = merger.composeGrids();
+
+  // sanity of merged grid
+  ASSERT_TRUE(static_cast<bool>(merged_grid));
+  EXPECT_FALSE(merged_grid->data.empty());
+  EXPECT_EQ((merged_grid->info.width) * (merged_grid->info.height),
+            merged_grid->data.size());
+  // grid size should indicate sucessful merge
+  EXPECT_NEAR(5427, merged_grid->info.width, 30);
+  EXPECT_NEAR(5427, merged_grid->info.height, 30);
+
+  if (verbose_tests) {
+    saveMap("canStichGridsGmapping.pgm", merged_grid);
+  }
+}
+
 TEST(MergingPipeline, estimationAccuracy)
 {
   auto maps = loadMaps(synthetic_maps.begin(), synthetic_maps.end());
   combine_grids::MergingPipeline merger;
   merger.feed(maps.begin(), maps.end());
-  merger.estimateTransform();
+  merger.estimateTransforms();
   auto merged_grid = merger.composeGrids();
 
   // sanity of merged grid
