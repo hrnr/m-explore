@@ -38,54 +38,64 @@
 #ifndef EXPLORE_FRONTIER_H_
 #define EXPLORE_FRONTIER_H_
 
-#include <nav_msgs/OccupancyGrid.h>
 #include <geometry_msgs/Pose.h>
-#include <visualization_msgs/MarkerArray.h>
+#include <nav_msgs/OccupancyGrid.h>
+#include <navfn/navfn_ros.h>
 #include <tf/LinearMath/Vector3.h>
+#include <visualization_msgs/MarkerArray.h>
 
 #include <explore/costmap_client.h>
 
-/* I have been using modified version of navfn for a long time here.
-Unfornutely my changes are affecting ABI of the component, so the can't be
-accepted for ROS Jade or below. I expect them be accepted for ROS Karmic. Then
-this should be moved back to using standard ROS navfn `<navfn/navfn_ros.h>`.
-For the meanwhile, to allow seamless building, I will be using internal
-version included from ROS. */
-
-#include <explore/navfn_ros.h>
-
-namespace explore {
-
+namespace explore
+{
 struct FrontierPoint {
-  size_t idx;     //position
-  tf::Vector3 d; //direction
+  size_t idx;     // position
+  tf::Vector3 d;  // direction
 
-  FrontierPoint() : idx(0) {}
-  FrontierPoint(size_t idx_, const tf::Vector3& d_) : idx(idx_), d(d_) {}
+  FrontierPoint() : idx(0)
+  {
+  }
+  FrontierPoint(size_t idx_, const tf::Vector3& d_) : idx(idx_), d(d_)
+  {
+  }
 };
 
 struct Frontier {
   size_t size;
   geometry_msgs::Pose pose;
 
-  Frontier() : size(0) {}
-  Frontier(size_t size_, const geometry_msgs::Pose& pose_) : size(size_), pose(pose_) {}
+  Frontier() : size(0)
+  {
+  }
+  Frontier(size_t size_, const geometry_msgs::Pose& pose_)
+    : size(size_), pose(pose_)
+  {
+  }
 };
 
 struct WeightedFrontier {
   double cost;
   Frontier frontier;
 
-  WeightedFrontier() : cost(1e9) {}
-  WeightedFrontier(double cost_, const Frontier& frontier_) : cost(cost_), frontier(frontier_) {}
-  bool operator<(const WeightedFrontier& o) const { return cost < o.cost; }
+  WeightedFrontier() : cost(1e9)
+  {
+  }
+  WeightedFrontier(double cost_, const Frontier& frontier_)
+    : cost(cost_), frontier(frontier_)
+  {
+  }
+  bool operator<(const WeightedFrontier& o) const
+  {
+    return cost < o.cost;
+  }
 };
 
 /**
  * @class ExploreFrontier
  * @brief A class that will identify frontiers in a partially explored map
  */
-class ExploreFrontier {
+class ExploreFrontier
+{
 private:
   // can't be const as we will do locking
   Costmap2DClient* const costmap_client_;
@@ -109,11 +119,13 @@ private:
   double getFrontierCost(const Frontier& frontier);
 
   /**
-   * @brief Calculates how much the robot would have to turn to face this frontier
+   * @brief Calculates how much the robot would have to turn to face this
+   * frontier
    * @param frontier to evaluate
    * @param robot_pose current pose
    */
-  double getOrientationChange(const Frontier& frontier, const tf::Stamped<tf::Pose>& robot_pose) const;
+  double getOrientationChange(const Frontier& frontier,
+                              const tf::Stamped<tf::Pose>& robot_pose) const;
 
   /**
    * @brief Calculates potential information gain of exploring frontier
@@ -138,12 +150,16 @@ public:
   bool getFrontiers(std::vector<geometry_msgs::Pose>& frontiers);
 
   /**
-   * @brief Returns a list of frontiers, sorted by the planners estimated cost to visit each frontier
+   * @brief Returns a list of frontiers, sorted by the planners estimated cost
+   * to visit each frontier
    * @param start The current position of the robot
    * @param goals Will be filled with sorted list of current goals
-   * @param cost_scale A scaling for the potential to a frontier goal point for the frontier's cost
-   * @param orientation_scale A scaling for the change in orientation required to get to a goal point for the frontier's cost
-   * @param gain_scale A scaling for the expected information gain to get to a goal point for the frontier's cost
+   * @param cost_scale A scaling for the potential to a frontier goal point for
+   * the frontier's cost
+   * @param orientation_scale A scaling for the change in orientation required
+   * to get to a goal point for the frontier's cost
+   * @param gain_scale A scaling for the expected information gain to get to a
+   * goal point for the frontier's cost
    * @return True if at least one frontier was found
    *
    * The frontiers are weighted by a simple cost function, which prefers
@@ -154,11 +170,10 @@ public:
    * improves the robustness of goals which may lie near other obstacles
    * which would prevent planning.
    */
-  bool getExplorationGoals(
-    tf::Stamped<tf::Pose> start,
-    std::vector<geometry_msgs::Pose>& goals,
-    double cost_scale, double orientation_scale, double gain_scale
-  );
+  bool getExplorationGoals(tf::Stamped<tf::Pose> start,
+                           std::vector<geometry_msgs::Pose>& goals,
+                           double cost_scale, double orientation_scale,
+                           double gain_scale);
 
   /**
    * @brief  Returns markers representing all frontiers
@@ -166,7 +181,6 @@ public:
    */
   void getVisualizationMarkers(visualization_msgs::MarkerArray& markers);
 };
-
 }
 
 #endif /* EXPLORE_FRONTIER_H_ */

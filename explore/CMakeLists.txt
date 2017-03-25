@@ -50,7 +50,6 @@ add_executable(explore
   src/explore_frontier.cpp
   src/costmap_client.cpp
   src/explore.cpp
-  src/navfn_ros.cpp
 )
 target_link_libraries(explore ${catkin_LIBRARIES})
 

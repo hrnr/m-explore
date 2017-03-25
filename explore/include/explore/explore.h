@@ -37,36 +37,30 @@
 #ifndef NAV_EXPLORE_H_
 #define NAV_EXPLORE_H_
 
-#include <vector>
-#include <string>
 #include <memory>
 #include <mutex>
+#include <string>
+#include <vector>
 
-#include <ros/ros.h>
-#include <move_base_msgs/MoveBaseAction.h>
 #include <actionlib/client/simple_action_client.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <move_base_msgs/MoveBaseAction.h>
+#include <navfn/navfn_ros.h>
+#include <ros/ros.h>
 #include <visualization_msgs/MarkerArray.h>
 
-#include <explore/explore_frontier.h>
 #include <explore/costmap_client.h>
+#include <explore/explore_frontier.h>
 
-/* I have been using modified version of navfn for a long time here.
-Unfornutely my changes are affecting ABI of the component, so the can't be
-accepted for ROS Jade or below. I expect them be accepted for ROS Karmic. Then
-this should be moved back to using standard ROS navfn `<navfn/navfn_ros.h>`.
-For the meanwhile, to allow seamless building, I will be using internal
-version included from ROS. */
-
-#include <explore/navfn_ros.h>
-
-namespace explore {
-
+namespace explore
+{
 /**
  * @class Explore
- * @brief A class adhering to the robot_actions::Action interface that moves the robot base to explore its environment.
+ * @brief A class adhering to the robot_actions::Action interface that moves the
+ * robot base to explore its environment.
  */
-class Explore {
+class Explore
+{
 public:
   Explore();
 
@@ -85,10 +79,9 @@ private:
    */
   void publishFrontiers();
 
-  void reachedGoal(
-    const actionlib::SimpleClientGoalState& status,
-    const move_base_msgs::MoveBaseResultConstPtr& result,
-    const geometry_msgs::PoseStamped& frontier_goal);
+  void reachedGoal(const actionlib::SimpleClientGoalState& status,
+                   const move_base_msgs::MoveBaseResultConstPtr& result,
+                   const geometry_msgs::PoseStamped& frontier_goal);
 
   bool goalOnBlacklist(const geometry_msgs::PoseStamped& goal);
 
@@ -99,7 +92,8 @@ private:
 
   Costmap2DClient costmap_client_;
   navfn::NavfnROS planner_;
-  actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> move_base_client_;
+  actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>
+      move_base_client_;
   ExploreFrontier explorer_;
   std::mutex planning_mutex_;
 
@@ -113,8 +107,6 @@ private:
   bool done_exploring_;
   bool visualize_;
 };
-
 }
 
 #endif
-
