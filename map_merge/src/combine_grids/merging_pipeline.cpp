@@ -39,8 +39,8 @@
 #include <combine_grids/merging_pipeline.h>
 #include <ros/assert.h>
 #include <ros/console.h>
-#include "../opencv_backport/stitching/matchers.hpp"
-#include "../opencv_backport/stitching/motion_estimators.hpp"
+#include <opencv2/stitching/detail/matchers.hpp>
+#include <opencv2/stitching/detail/motion_estimators.hpp>
 #include "estimation_internal.h"
 
 namespace combine_grids
@@ -56,11 +56,11 @@ bool MergingPipeline::estimateTransforms(FeatureType feature_type,
   cv::Ptr<cv::detail::FeaturesFinder> finder =
       internal::chooseFeatureFinder(feature_type);
   cv::Ptr<cv::detail::FeaturesMatcher> matcher =
-      cv::makePtr<cv_backport::AffineBestOf2NearestMatcher>();
-  cv::Ptr<cv_backport::Estimator> estimator =
-      cv::makePtr<cv_backport::AffineBasedEstimator>();
-  cv::Ptr<cv_backport::BundleAdjusterBase> adjuster =
-      cv::makePtr<cv_backport::BundleAdjusterAffinePartial>();
+      cv::makePtr<cv::detail::AffineBestOf2NearestMatcher>();
+  cv::Ptr<cv::detail::Estimator> estimator =
+      cv::makePtr<cv::detail::AffineBasedEstimator>();
+  cv::Ptr<cv::detail::BundleAdjusterBase> adjuster =
+      cv::makePtr<cv::detail::BundleAdjusterAffinePartial>();
 
   if (images_.empty()) {
     return true;
@@ -88,7 +88,7 @@ bool MergingPipeline::estimateTransforms(FeatureType feature_type,
 
   /* use only matches that has enough confidence. leave out matches that are not
    * connected (small components) */
-  good_indices = cv_backport::leaveBiggestComponent(
+  good_indices = cv::detail::leaveBiggestComponent(
       image_features, pairwise_matches, static_cast<float>(confidence));
 
   /* estimate transform */

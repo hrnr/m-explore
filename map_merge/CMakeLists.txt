@@ -53,10 +53,6 @@ add_library(combine_grids STATIC
   src/combine_grids/merging_pipeline.cpp
   src/combine_grids/grid_warper.cpp
   src/combine_grids/grid_compositor.cpp
-  src/opencv_backport/calib3d/ptsetreg.cpp
-  src/opencv_backport/calib3d/levmarq.cpp
-  src/opencv_backport/stitching/matchers.cpp
-  src/opencv_backport/stitching/motion_estimators.cpp
 )
 target_link_libraries(combine_grids ${OpenCV_LIBRARIES})
 

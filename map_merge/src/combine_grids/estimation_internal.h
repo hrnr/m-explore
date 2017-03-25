@@ -40,7 +40,7 @@
 #include <combine_grids/merging_pipeline.h>
 #include <opencv2/core/utility.hpp>
 #include <opencv2/imgcodecs.hpp>
-#include "../opencv_backport/stitching/matchers.hpp"
+#include <opencv2/stitching/detail/matchers.hpp>
 
 namespace combine_grids
 {
@@ -51,7 +51,7 @@ chooseFeatureFinder(FeatureType type)
 {
   switch (type) {
     case FeatureType::AKAZE:
-      return cv::makePtr<cv_backport::AKAZEFeaturesFinder>();
+      return cv::makePtr<cv::detail::AKAZEFeaturesFinder>();
     case FeatureType::ORB:
       return cv::makePtr<cv::detail::OrbFeaturesFinder>();
     case FeatureType::SURF:
