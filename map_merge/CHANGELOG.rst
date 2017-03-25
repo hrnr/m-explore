@@ -2,8 +2,8 @@
 Changelog for package multirobot_map_merge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.1 (2017-03-25)
+------------------
 * map_merge: use inverted tranform
   * transform needs to be inverted before using
 * map_merge: change package description
