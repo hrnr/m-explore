@@ -154,6 +154,7 @@ void MapMerge::mapMerging()
     {
       boost::shared_lock<boost::shared_mutex> lock(subscriptions_mutex_);
       for (auto& subscription : subscriptions_) {
+        std::lock_guard<std::mutex> s_lock(subscription.mutex);
         grids.push_back(subscription.readonly_map);
         transforms.push_back(subscription.initial_pose);
       }
@@ -189,6 +190,7 @@ void MapMerge::poseEstimation()
   {
     boost::shared_lock<boost::shared_mutex> lock(subscriptions_mutex_);
     for (auto& subscription : subscriptions_) {
+      std::lock_guard<std::mutex> s_lock(subscription.mutex);
       grids.push_back(subscription.readonly_map);
     }
   }
@@ -203,8 +205,8 @@ void MapMerge::fullMapUpdate(const nav_msgs::OccupancyGrid::ConstPtr& msg,
 {
   ROS_DEBUG("received full map update");
   std::lock_guard<std::mutex> lock(subscription.mutex);
-  if (subscription.readonly_map.load() &&
-      subscription.readonly_map.load()->header.stamp > msg->header.stamp) {
+  if (subscription.readonly_map &&
+      subscription.readonly_map->header.stamp > msg->header.stamp) {
     // we have been overrunned by faster update. our work was useless.
     return;
   }
@@ -276,8 +278,8 @@ void MapMerge::partialMapUpdate(
   {
     // store back updated map
     std::lock_guard<std::mutex> lock(subscription.mutex);
-    if (subscription.readonly_map.load() &&
-        subscription.readonly_map.load()->header.stamp > map->header.stamp) {
+    if (subscription.readonly_map &&
+        subscription.readonly_map->header.stamp > map->header.stamp) {
       // we have been overrunned by faster update. our work was useless.
       return;
     }
