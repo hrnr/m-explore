@@ -2,8 +2,8 @@
 Changelog for package explore_lite
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.1 (2017-03-25)
+------------------
 * update documentation
 * Contributors: Jiri Horner
 
