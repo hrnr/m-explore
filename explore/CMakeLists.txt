@@ -15,17 +15,8 @@ find_package(catkin REQUIRED COMPONENTS
   costmap_2d
   actionlib
   navfn
-  roslaunch
 )
 
-################################################
-## Declare ROS messages, services and actions ##
-################################################
-# we don't have any
-
-###################################
-## catkin specific configuration ##
-###################################
 catkin_package()
 
 ###########
@@ -65,6 +56,8 @@ install(DIRECTORY launch/
 ## Testing ##
 #############
 if(CATKIN_ENABLE_TESTING)
+  find_package(roslaunch REQUIRED)
+
   # test all launch files
   roslaunch_add_file_check(launch)
 endif()
