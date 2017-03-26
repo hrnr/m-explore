@@ -2,6 +2,14 @@
 Changelog for package multirobot_map_merge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* map_merge: upgrade to package format 2
+* node completely rewritten based on my work included in opencv
+* uses more reliable features by default -> more robust merging
+* known_init_poses is now by default false to make it easy to start for new users
+* Contributors: Jiri Horner
+
 1.0.1 (2017-03-25)
 ------------------
 * map_merge: use inverted tranform
