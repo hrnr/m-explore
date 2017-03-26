@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<package>
+<package format="2">
   <name>multirobot_map_merge</name>
   <version>1.0.1</version>
 
@@ -11,22 +11,15 @@
   <license>BSD</license>
   <url>http://wiki.ros.org/multirobot_map_merge</url>
 
-  <!-- acknowledgements
-  <author>Zhi Yan</author>
-  <url>http://www.ai.univ-paris8.fr/~yz/</url>
-  -->
   <buildtool_depend>catkin</buildtool_depend>
 
-  <build_depend>roscpp</build_depend>
-  <build_depend>geometry_msgs</build_depend>
-  <build_depend>nav_msgs</build_depend>
-  <build_depend>map_msgs</build_depend>
-  <build_depend>roslaunch</build_depend>
-  <build_depend>opencv3</build_depend>
-  <build_depend>tf2_geometry_msgs</build_depend>
+  <depend>roscpp</depend>
+  <depend>opencv3</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>map_msgs</depend>
+  <depend>tf2_geometry_msgs</depend>
 
-  <run_depend>roscpp</run_depend>
-  <run_depend>opencv3</run_depend>
-
+  <test_depend>roslaunch</test_depend>
   <test_depend>rosunit</test_depend>
 </package>
