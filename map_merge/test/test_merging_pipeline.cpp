@@ -34,6 +34,7 @@
  *
  *********************************************************************/
 
+#include <combine_grids/grid_warper.h>
 #include <gtest/gtest.h>
 #include <ros/console.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
@@ -45,10 +46,6 @@
 
 const std::array<const char*, 2> hector_maps = {
     "map00.pgm", "map05.pgm",
-};
-
-const std::array<const char*, 2> synthetic_maps = {
-    "map05.pgm", "map05_rotated+30deg_translated+0-402.pgm",
 };
 
 const std::array<const char*, 2> gmapping_maps = {
@@ -141,9 +138,29 @@ TEST(MergingPipeline, canStichGridsGmapping)
 
 TEST(MergingPipeline, estimationAccuracy)
 {
-  auto maps = loadMaps(synthetic_maps.begin(), synthetic_maps.end());
+  // for this test we measure estimation on the same grid artificially
+  // transformed
+  double angle = 0.523599 /* 30 deg in rads*/;
+  // TODO test also translations
+  double tx = 0;
+  double ty = 0;
+  cv::Matx23d transform{std::cos(angle), -std::sin(angle), tx,
+                        std::sin(angle), std::cos(angle),  ty};
+
+  auto map = loadMap(hector_maps[1]);
   combine_grids::MergingPipeline merger;
-  merger.feed(maps.begin(), maps.end());
+  merger.feed(&map, &map + 1);
+
+  // warp the map with Affine Transform
+  combine_grids::internal::GridWarper warper;
+  cv::Mat warped;
+  auto roi = warper.warp(merger.images_[0], cv::Mat(transform), warped);
+
+  // add warped map
+  // this relies on internal implementation of merging pipeline
+  merger.grids_.emplace_back();
+  merger.images_.push_back(warped);
+
   merger.estimateTransforms();
   auto merged_grid = merger.composeGrids();
 
@@ -154,18 +171,15 @@ TEST(MergingPipeline, estimationAccuracy)
             merged_grid->data.size());
   // transforms
   auto transforms = merger.getTransforms();
-  EXPECT_EQ(transforms.size(), synthetic_maps.size());
+  EXPECT_EQ(transforms.size(), 2);
   tf2::Transform t;
   tf2::fromMsg(transforms[0], t);
   EXPECT_EQ(tf2::Transform::getIdentity(), t);
   tf2::fromMsg(transforms[1], t);
-  double angle = 0.523599 /* 30 deg in rads*/;
-  // translation after aplying rotation
-  double tx = 649.8655183693847;
-  double ty = 23.81615210961355;
+
   EXPECT_NEAR(angle, t.getRotation().getAngle(), 1e-2);
-  EXPECT_NEAR(tx, t.getOrigin().x(), 5);
-  EXPECT_NEAR(ty, t.getOrigin().y(), 5);
+  EXPECT_NEAR(tx - roi.tl().x, t.getOrigin().x(), 2);
+  EXPECT_NEAR(ty - roi.tl().y, t.getOrigin().y(), 2);
 }
 
 TEST(MergingPipeline, transformsRoundTrip)
@@ -275,7 +289,7 @@ TEST(MergingPipeline, emptyImageWithTransform)
   constexpr size_t size = 1;
   std::vector<nav_msgs::OccupancyGridConstPtr> maps(size);
   std::vector<geometry_msgs::Transform> transforms(size);
-  transforms[0].rotation.z = 1; // set transform to identity
+  transforms[0].rotation.z = 1;  // set transform to identity
   combine_grids::MergingPipeline merger;
   merger.feed(maps.begin(), maps.end());
   merger.setTransforms(transforms.begin(), transforms.end());
