@@ -2,8 +2,8 @@
 Changelog for package multirobot_map_merge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.0.0 (2017-03-26)
+------------------
 * map_merge: upgrade to package format 2
 * node completely rewritten based on my work included in opencv
 * uses more reliable features by default -> more robust merging

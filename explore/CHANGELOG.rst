@@ -2,8 +2,8 @@
 Changelog for package explore_lite
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.0.0 (2017-03-26)
+------------------
 * explore: migrate to package format 2
 * explore: remove internal version of navfn_ros
   * my changes are included in the ros since kinetic
