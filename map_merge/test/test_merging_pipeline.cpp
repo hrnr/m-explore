@@ -43,10 +43,8 @@
 #define private public
 #include <combine_grids/merging_pipeline.h>
 
-const std::array<const char*, 13> hector_maps = {
-    "map00.pgm", "map05.pgm", "map07.pgm", "map09.pgm", "map11.pgm",
-    "map16.pgm", "map19.pgm", "map21.pgm", "map22.pgm", "map25.pgm",
-    "map27.pgm", "map28.pgm", "map31.pgm",
+const std::array<const char*, 2> hector_maps = {
+    "map00.pgm", "map05.pgm",
 };
 
 const std::array<const char*, 2> synthetic_maps = {
@@ -57,7 +55,7 @@ const std::array<const char*, 2> gmapping_maps = {
     "2011-08-09-12-22-52.pgm", "2012-01-28-11-12-01.pgm",
 };
 
-constexpr bool verbose_tests = true;
+constexpr bool verbose_tests = false;
 
 TEST(MergingPipeline, canStich0Grid)
 {
@@ -71,9 +69,9 @@ TEST(MergingPipeline, canStich0Grid)
 
 TEST(MergingPipeline, canStich1Grid)
 {
-  auto maps = loadMaps(hector_maps.begin(), hector_maps.end());
+  auto map = loadMap(hector_maps[1]);
   combine_grids::MergingPipeline merger;
-  merger.feed(maps.begin() + 1, maps.begin() + 2);
+  merger.feed(&map, &map + 1);
   merger.estimateTransforms();
   auto merged_grid = merger.composeGrids();
 
@@ -83,11 +81,11 @@ TEST(MergingPipeline, canStich1Grid)
   EXPECT_EQ((merged_grid->info.width) * (merged_grid->info.height),
             merged_grid->data.size());
   // merged must be the same with original
-  EXPECT_EQ(merged_grid->info.width, maps[1]->info.width);
-  EXPECT_EQ(merged_grid->info.height, maps[1]->info.height);
-  EXPECT_EQ(merged_grid->data.size(), maps[1]->data.size());
+  EXPECT_EQ(merged_grid->info.width, map->info.width);
+  EXPECT_EQ(merged_grid->info.height, map->info.height);
+  EXPECT_EQ(merged_grid->data.size(), map->data.size());
   for (size_t i = 0; i < merged_grid->data.size(); ++i) {
-    EXPECT_EQ(merged_grid->data[i], maps[1]->data[i]);
+    EXPECT_EQ(merged_grid->data[i], map->data[i]);
   }
   // check estimated transforms
   auto transforms = merger.getTransforms();
@@ -101,7 +99,7 @@ TEST(MergingPipeline, canStich2Grids)
 {
   auto maps = loadMaps(hector_maps.begin(), hector_maps.end());
   combine_grids::MergingPipeline merger;
-  merger.feed(maps.begin(), maps.begin() + 2);
+  merger.feed(maps.begin(), maps.end());
   merger.estimateTransforms();
   auto merged_grid = merger.composeGrids();
 
@@ -172,7 +170,7 @@ TEST(MergingPipeline, estimationAccuracy)
 
 TEST(MergingPipeline, transformsRoundTrip)
 {
-  auto map = loadMap("map00.pgm");
+  auto map = loadMap(hector_maps[0]);
   combine_grids::MergingPipeline merger;
   merger.feed(&map, &map + 1);
   for (size_t i = 0; i < 1000; ++i) {
@@ -203,7 +201,7 @@ TEST(MergingPipeline, transformsRoundTrip)
 
 TEST(MergingPipeline, setTransformsInternal)
 {
-  auto map = loadMap("map00.pgm");
+  auto map = loadMap(hector_maps[0]);
   combine_grids::MergingPipeline merger;
   merger.feed(&map, &map + 1);
 
@@ -230,7 +228,7 @@ TEST(MergingPipeline, setTransformsInternal)
 
 TEST(MergingPipeline, getTransformsInternal)
 {
-  auto map = loadMap("map00.pgm");
+  auto map = loadMap(hector_maps[0]);
   combine_grids::MergingPipeline merger;
   merger.feed(&map, &map + 1);
 
