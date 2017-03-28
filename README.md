@@ -1,16 +1,16 @@
 # m-explore
 
-[![Build Status](http://build.ros.org/job/Jdev__m_explore__ubuntu_trusty_amd64/badge/icon)](http://build.ros.org/job/Jdev__m_explore__ubuntu_trusty_amd64)
+[![Build Status](http://build.ros.org/job/Kdev__m_explore__ubuntu_xenial_amd64/badge/icon)](http://build.ros.org/job/Kdev__m_explore__ubuntu_xenial_amd64)
 
 ROS packages for multi robot exploration.
 
 Installing
 ----------
 
-Packages are released for ROS jade.
+Packages are released for ROS jade and ROS kinetic.
 
 ```
-	sudo apt install ros-jade-multirobot-map-merge ros-jade-explore-lite
+	sudo apt install ros-kinetic-multirobot-map-merge ros-kinetic-explore-lite
 ```
 
 Building
@@ -18,7 +18,7 @@ Building
 
 Build as standard catkin packages. There are no special dependencies needed
 (use rosdep to resolve dependencies in ROS). You should use brach specific for
-your release i.e. `jade-devel` for jade. Master branch is for latest ROS.
+your release i.e. `kinetic-devel` for kinetic. Master branch is for latest ROS.
 
 WIKI
 ----
