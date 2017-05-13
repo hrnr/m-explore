@@ -40,39 +40,43 @@
 
 #include <thread>
 
-namespace explore {
-
-Explore::Explore() :
-  private_nh_("~"),
-  tf_listener_(ros::Duration(10.0)),
-  costmap_client_(private_nh_, relative_nh_, &tf_listener_),
-  planner_("explore_planner", costmap_client_.getCostmap(),
-    costmap_client_.getGlobalFrameID()),
-  move_base_client_("move_base"),
-  explorer_(&costmap_client_, &planner_),
-  prev_plan_size_(0),
-  done_exploring_(false)
+namespace explore
+{
+Explore::Explore()
+  : private_nh_("~")
+  , tf_listener_(ros::Duration(10.0))
+  , costmap_client_(private_nh_, relative_nh_, &tf_listener_)
+  , planner_("explore_planner", costmap_client_.getCostmap(),
+             costmap_client_.getGlobalFrameID())
+  , move_base_client_("move_base")
+  , explorer_(&costmap_client_, &planner_)
+  , prev_plan_size_(0)
+  , done_exploring_(false)
 {
   private_nh_.param("planner_frequency", planner_frequency_, 1.0);
   private_nh_.param("progress_timeout", progress_timeout_, 30.0);
   private_nh_.param("visualize", visualize_, false);
   private_nh_.param("potential_scale", potential_scale_, 1e-3);
-  private_nh_.param("orientation_scale", orientation_scale_, 0.0); // TODO: set this back to 0.318 once getOrientationChange is fixed
+  // TODO: set this back to 0.318 once getOrientationChange is fixed
+  private_nh_.param("orientation_scale", orientation_scale_, 0.0);
   private_nh_.param("gain_scale", gain_scale_, 1.0);
 
-  if(visualize_) {
-    marker_array_publisher_ = private_nh_.advertise<visualization_msgs::MarkerArray>("frontiers", 10);
+  if (visualize_) {
+    marker_array_publisher_ =
+        private_nh_.advertise<visualization_msgs::MarkerArray>("frontiers", 10);
   }
 }
 
-void Explore::publishFrontiers() {
+void Explore::publishFrontiers()
+{
   visualization_msgs::MarkerArray markers;
   explorer_.getVisualizationMarkers(markers);
   ROS_DEBUG("publishing %lu markers", markers.markers.size());
   marker_array_publisher_.publish(markers);
 }
 
-void Explore::makePlan() {
+void Explore::makePlan()
+{
   // this method may be called from callback
   std::lock_guard<std::mutex> lock(planning_mutex_);
 
@@ -81,7 +85,8 @@ void Explore::makePlan() {
 
   std::vector<geometry_msgs::Pose> goals;
 
-  explorer_.getExplorationGoals(robot_pose, goals, potential_scale_, orientation_scale_, gain_scale_);
+  explorer_.getExplorationGoals(robot_pose, goals, potential_scale_,
+                                orientation_scale_, gain_scale_);
   if (goals.size() == 0) {
     done_exploring_ = true;
     ROS_DEBUG("no explorations goals found");
@@ -101,7 +106,9 @@ void Explore::makePlan() {
 
   goal_pose.header.frame_id = costmap_client_.getGlobalFrameID();
   goal_pose.header.stamp = ros::Time::now();
-  planner_.computePotential(robot_pose_msg.pose.position); // just to be safe, though this should already have been done in explorer_->getExplorationGoals
+  // just to be safe, though this should already have been done in
+  // explorer_->getExplorationGoals
+  planner_.computePotential(robot_pose_msg.pose.position);
   size_t blacklist_count = 0;
   for (auto& goal : goals) {
     goal_pose.pose = goal;
@@ -110,7 +117,8 @@ void Explore::makePlan() {
       continue;
     }
 
-    valid_plan = planner_.getPlanFromPotential(goal_pose, plan) && !plan.empty();
+    valid_plan =
+        planner_.getPlanFromPotential(goal_pose, plan) && !plan.empty();
     if (valid_plan) {
       ROS_DEBUG("got valid plan");
       break;
@@ -125,7 +133,7 @@ void Explore::makePlan() {
     } else {
       double dx = prev_goal_.pose.position.x - goal_pose.pose.position.x;
       double dy = prev_goal_.pose.position.y - goal_pose.pose.position.y;
-      double dist = sqrt(dx*dx+dy*dy);
+      double dist = sqrt(dx * dx + dy * dy);
       if (dist < 0.01) {
         time_since_progress_ += 1.0 / planner_frequency_;
       }
@@ -142,49 +150,53 @@ void Explore::makePlan() {
 
     move_base_msgs::MoveBaseGoal goal;
     goal.target_pose = goal_pose;
-    move_base_client_.sendGoal(goal, boost::bind(&Explore::reachedGoal, this, _1, _2, goal_pose));
+    move_base_client_.sendGoal(
+        goal, boost::bind(&Explore::reachedGoal, this, _1, _2, goal_pose));
 
   } else {
     ROS_WARN("Done exploring with %lu goals left that could not be reached."
-      "There are %lu goals on our blacklist, and %lu of the frontier goals are too close to"
-      "them to pursue. The rest had global planning fail to them. \n",
-      goals.size(), frontier_blacklist_.size(), blacklist_count);
+             "There are %lu goals on our blacklist, and %lu of the frontier "
+             "goals are too close to"
+             "them to pursue. The rest had global planning fail to them. \n",
+             goals.size(), frontier_blacklist_.size(), blacklist_count);
     ROS_INFO("Exploration finished. Hooray.");
     done_exploring_ = true;
   }
 }
 
-bool Explore::goalOnBlacklist(const geometry_msgs::PoseStamped& goal){
-  costmap_2d::Costmap2D *costmap2d = costmap_client_.getCostmap();
+bool Explore::goalOnBlacklist(const geometry_msgs::PoseStamped& goal)
+{
+  costmap_2d::Costmap2D* costmap2d = costmap_client_.getCostmap();
 
-  //check if a goal is on the blacklist for goals that we're pursuing
-  for(auto& frontier_goal : frontier_blacklist_) {
+  // check if a goal is on the blacklist for goals that we're pursuing
+  for (auto& frontier_goal : frontier_blacklist_) {
     double x_diff = fabs(goal.pose.position.x - frontier_goal.pose.position.x);
     double y_diff = fabs(goal.pose.position.y - frontier_goal.pose.position.y);
 
-    if(x_diff < 2 * costmap2d->getResolution() && y_diff < 2 * costmap2d->getResolution())
+    if (x_diff < 2 * costmap2d->getResolution() &&
+        y_diff < 2 * costmap2d->getResolution())
       return true;
   }
   return false;
 }
 
-void Explore::reachedGoal(
-  const actionlib::SimpleClientGoalState& status,
-  const move_base_msgs::MoveBaseResultConstPtr&,
-  const geometry_msgs::PoseStamped& frontier_goal){
-
+void Explore::reachedGoal(const actionlib::SimpleClientGoalState& status,
+                          const move_base_msgs::MoveBaseResultConstPtr&,
+                          const geometry_msgs::PoseStamped& frontier_goal)
+{
   ROS_DEBUG("Reached goal");
-  if(status == actionlib::SimpleClientGoalState::ABORTED){
+  if (status == actionlib::SimpleClientGoalState::ABORTED) {
     frontier_blacklist_.push_back(frontier_goal);
     ROS_DEBUG("Adding current goal to black list");
   }
 
-  //create a plan from the frontiers left and send a new goal to move_base
+  // create a plan from the frontiers left and send a new goal to move_base
   makePlan();
 }
 
-void Explore::execute() {
-  while (!move_base_client_.waitForServer(ros::Duration(5,0)))
+void Explore::execute()
+{
+  while (!move_base_client_.waitForServer(ros::Duration(5, 0)))
     ROS_WARN("Waiting to connect to move_base server");
 
   ROS_INFO("Connected to move_base server");
@@ -201,7 +213,8 @@ void Explore::execute() {
   move_base_client_.cancelAllGoals();
 }
 
-void Explore::spin() {
+void Explore::spin()
+{
   ros::spinOnce();
   std::thread t(&Explore::execute, this);
   ros::spin();
@@ -209,14 +222,14 @@ void Explore::spin() {
     t.join();
 }
 
-} // namespace explore
+}  // namespace explore
 
-int main(int argc, char** argv){
+int main(int argc, char** argv)
+{
   ros::init(argc, argv, "explore");
 
   explore::Explore explore;
   explore.spin();
 
-  return(0);
+  return 0;
 }
-
