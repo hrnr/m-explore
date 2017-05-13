@@ -40,6 +40,15 @@
 
 #include <thread>
 
+inline static bool operator==(const geometry_msgs::PoseStamped& one,
+                              const geometry_msgs::PoseStamped& two)
+{
+  double dx = one.pose.position.x - two.pose.position.x;
+  double dy = one.pose.position.y - two.pose.position.y;
+  double dist = sqrt(dx * dx + dy * dy);
+  return dist < 0.01;
+}
+
 namespace explore
 {
 Explore::Explore()
@@ -52,8 +61,10 @@ Explore::Explore()
   , explorer_(&costmap_client_, &planner_)
   , prev_plan_size_(0)
 {
+  double timeout;
   private_nh_.param("planner_frequency", planner_frequency_, 1.0);
-  private_nh_.param("progress_timeout", progress_timeout_, 30.0);
+  private_nh_.param("progress_timeout", timeout, 30.0);
+  progress_timeout_ = ros::Duration(timeout);
   private_nh_.param("visualize", visualize_, false);
   private_nh_.param("potential_scale", potential_scale_, 1e-3);
   // TODO: set this back to 0.318 once getOrientationChange is fixed
@@ -136,25 +147,25 @@ void Explore::makePlan()
   }
 
   if (valid_plan) {
-    if (prev_plan_size_ != plan.size()) {
-      time_since_progress_ = 0.0;
-    } else {
-      double dx = prev_goal_.pose.position.x - goal_pose.pose.position.x;
-      double dy = prev_goal_.pose.position.y - goal_pose.pose.position.y;
-      double dist = sqrt(dx * dx + dy * dy);
-      if (dist < 0.01) {
-        time_since_progress_ += 1.0 / planner_frequency_;
-      }
+    // if the plan is to pursue the current goal
+    bool same_goal = prev_goal_ == goal_pose;
+    if (!same_goal || prev_plan_size_ != plan.size()) {
+      // we have different goal or we made some progress
+      last_progress_ = ros::Time::now();
     }
 
     // black list goals for which we've made no progress for a long time
-    if (time_since_progress_ > progress_timeout_) {
+    if (ros::Time::now() - last_progress_ > progress_timeout_) {
       frontier_blacklist_.push_back(goal_pose);
       ROS_DEBUG("Adding current goal to black list");
     }
 
     prev_plan_size_ = plan.size();
     prev_goal_ = goal_pose;
+
+    if (same_goal) {
+      return;
+    }
 
     move_base_msgs::MoveBaseGoal goal;
     goal.target_pose = goal_pose;

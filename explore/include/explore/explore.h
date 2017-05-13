@@ -102,7 +102,8 @@ private:
   std::vector<geometry_msgs::PoseStamped> frontier_blacklist_;
   geometry_msgs::PoseStamped prev_goal_;
   size_t prev_plan_size_;
-  double time_since_progress_, progress_timeout_;
+  ros::Time last_progress_;
+  ros::Duration progress_timeout_;
   double potential_scale_, orientation_scale_, gain_scale_;
   bool visualize_;
 };
