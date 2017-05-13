@@ -63,10 +63,10 @@ class Explore
 {
 public:
   Explore();
+  ~Explore();
 
-  void execute();
-
-  void spin();
+  void start();
+  void stop();
 
 private:
   /**
@@ -95,16 +95,15 @@ private:
   actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>
       move_base_client_;
   ExploreFrontier explorer_;
-  std::mutex planning_mutex_;
+  ros::Timer exploring_timer_;
+  ros::Timer oneshot_;
 
-  tf::Stamped<tf::Pose> global_pose_;
   double planner_frequency_;
   std::vector<geometry_msgs::PoseStamped> frontier_blacklist_;
   geometry_msgs::PoseStamped prev_goal_;
   size_t prev_plan_size_;
   double time_since_progress_, progress_timeout_;
   double potential_scale_, orientation_scale_, gain_scale_;
-  bool done_exploring_;
   bool visualize_;
 };
 }

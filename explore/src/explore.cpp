@@ -51,7 +51,6 @@ Explore::Explore()
   , move_base_client_("move_base")
   , explorer_(&costmap_client_, &planner_)
   , prev_plan_size_(0)
-  , done_exploring_(false)
 {
   private_nh_.param("planner_frequency", planner_frequency_, 1.0);
   private_nh_.param("progress_timeout", progress_timeout_, 30.0);
@@ -65,6 +64,19 @@ Explore::Explore()
     marker_array_publisher_ =
         private_nh_.advertise<visualization_msgs::MarkerArray>("frontiers", 10);
   }
+
+  ROS_INFO("Waiting to connect to move_base server");
+  move_base_client_.waitForServer();
+  ROS_INFO("Connected to move_base server");
+
+  exploring_timer_ =
+      relative_nh_.createTimer(ros::Duration(1. / planner_frequency_),
+                               [this](const ros::TimerEvent&) { makePlan(); });
+}
+
+Explore::~Explore()
+{
+  stop();
 }
 
 void Explore::publishFrontiers()
@@ -77,22 +89,18 @@ void Explore::publishFrontiers()
 
 void Explore::makePlan()
 {
-  // this method may be called from callback
-  std::lock_guard<std::mutex> lock(planning_mutex_);
-
   tf::Stamped<tf::Pose> robot_pose;
   costmap_client_.getRobotPose(robot_pose);
-
   std::vector<geometry_msgs::Pose> goals;
-
   explorer_.getExplorationGoals(robot_pose, goals, potential_scale_,
                                 orientation_scale_, gain_scale_);
-  if (goals.size() == 0) {
-    done_exploring_ = true;
+
+  if (goals.empty()) {
+    stop();
     ROS_DEBUG("no explorations goals found");
-  } else {
-    ROS_DEBUG("found %lu explorations goals", goals.size());
+    return;
   }
+  ROS_DEBUG("found %lu explorations goals", goals.size());
 
   // publish frontiers as visualization markers
   if (visualize_) {
@@ -160,7 +168,7 @@ void Explore::makePlan()
              "them to pursue. The rest had global planning fail to them. \n",
              goals.size(), frontier_blacklist_.size(), blacklist_count);
     ROS_INFO("Exploration finished. Hooray.");
-    done_exploring_ = true;
+    stop();
   }
 }
 
@@ -184,42 +192,30 @@ void Explore::reachedGoal(const actionlib::SimpleClientGoalState& status,
                           const move_base_msgs::MoveBaseResultConstPtr&,
                           const geometry_msgs::PoseStamped& frontier_goal)
 {
-  ROS_DEBUG("Reached goal");
+  ROS_DEBUG("Reached goal with status: %s", status.toString().c_str());
   if (status == actionlib::SimpleClientGoalState::ABORTED) {
     frontier_blacklist_.push_back(frontier_goal);
     ROS_DEBUG("Adding current goal to black list");
   }
 
-  // create a plan from the frontiers left and send a new goal to move_base
-  makePlan();
+  // find new goal immediatelly regardless of planning frequency.
+  // execute via timer to prevent dead lock in move_base_client (this is
+  // callback for sendGoal, which is called in makePlan). the timer must live
+  // until callback is executed.
+  oneshot_ = relative_nh_.createTimer(
+      ros::Duration(0, 0), [this](const ros::TimerEvent&) { makePlan(); },
+      true);
 }
 
-void Explore::execute()
+void Explore::start()
 {
-  while (!move_base_client_.waitForServer(ros::Duration(5, 0)))
-    ROS_WARN("Waiting to connect to move_base server");
+  exploring_timer_.start();
+}
 
-  ROS_INFO("Connected to move_base server");
-
-  // This call sends the first goal, and sets up for future callbacks.
-  makePlan();
-
-  ros::Rate r(planner_frequency_);
-  while (relative_nh_.ok() && (!done_exploring_)) {
-    makePlan();
-    r.sleep();
-  }
-
+void Explore::stop()
+{
   move_base_client_.cancelAllGoals();
-}
-
-void Explore::spin()
-{
-  ros::spinOnce();
-  std::thread t(&Explore::execute, this);
-  ros::spin();
-  if (t.joinable())
-    t.join();
+  exploring_timer_.stop();
 }
 
 }  // namespace explore
@@ -229,7 +225,7 @@ int main(int argc, char** argv)
   ros::init(argc, argv, "explore");
 
   explore::Explore explore;
-  explore.spin();
+  ros::spin();
 
   return 0;
 }
