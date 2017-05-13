@@ -130,7 +130,7 @@ bool ExploreFrontier::getExplorationGoals(
 
   goals.clear();
   goals.reserve(weighted_frontiers_.size());
-  for (auto weighted_frontier : weighted_frontiers_) {
+  for (auto& weighted_frontier : weighted_frontiers_) {
     goals.push_back(weighted_frontier.frontier.pose);
   }
   return (goals.size() > 0);
@@ -314,11 +314,19 @@ void ExploreFrontier::getVisualizationMarkers(visualization_msgs::MarkerArray& m
   m.lifetime = ros::Duration(0);
   m.frame_locked = true;
 
+  // weighted frontiers are always sorted
+  double min_cost = weighted_frontiers_.empty() ? 0. : weighted_frontiers_[0].cost;
+
   m.action = visualization_msgs::Marker::ADD;
   size_t id=0;
-  for (auto& frontier : frontiers_) {
+  for (auto& weighted_frontier : weighted_frontiers_) {
     m.id = id;
-    m.pose = frontier.pose;
+    m.pose = weighted_frontier.frontier.pose;
+    // scale frontier according to its cost (costier frontiers will be smaller)
+    double scale = min_cost / weighted_frontier.cost;
+    m.scale.x = scale;
+    m.scale.y = scale;
+    m.scale.z = scale;
     markers.push_back(m);
     ++id;
   }
