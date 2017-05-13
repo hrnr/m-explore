@@ -105,20 +105,12 @@ bool ExploreFrontier::getExplorationGoals(
     return false;
   }
 
-  geometry_msgs::Point start;
-  start.x = robot_pose.getOrigin().x();
-  start.y = robot_pose.getOrigin().y();
-  start.z = robot_pose.getOrigin().z();
-  planner_->computePotential(start);
+  geometry_msgs::PoseStamped start;
+  tf::poseStampedTFToMsg(robot_pose, start);
+  planner_->computePotential(start.pose.position);
 
-  //we'll make sure that we set goals for the frontier at least the circumscribed
-  //radius away from unknown space
-  // 2015: this may not be necessary
-  // float step = -1.0 * costmap_resolution;
-  // int c = ceil(costmap.getCircumscribedRadius() / costmap_resolution);
-  // WeightedFrontier goal;
-  std::vector<WeightedFrontier> weightedFrontiers;
-  weightedFrontiers.reserve(frontiers_.size());
+  weighted_frontiers_.clear();
+  weighted_frontiers_.reserve(frontiers_.size());
   for (auto& frontier: frontiers_) {
     WeightedFrontier weightedFrontier;
     weightedFrontier.frontier = frontier;
@@ -128,36 +120,18 @@ bool ExploreFrontier::getExplorationGoals(
     tf::quaternionMsgToTF(frontier.pose.orientation, bt);
     tf::Vector3 v(cos(bt.getAngle()), sin(bt.getAngle()), 0.0);
 
-//     for (int j=0; j <= c; j++) {
-//       tf::Vector3 check_point = p + (v * (step * j));
-//       weightedFrontier.frontier.pose.position.x = check_point.x();
-//       weightedFrontier.frontier.pose.position.y = check_point.y();
-//       weightedFrontier.frontier.pose.position.z = check_point.z();
-
-//       weightedFrontier.cost = potential_scale * getFrontierCost(weightedFrontier.frontier) + orientation_scale * getOrientationChange(weightedFrontier.frontier, robot_pose) - gain_scale * getFrontierGain(weightedFrontier.frontier, costmapResolution_);
-// //      weightedFrontier.cost = getFrontierCost(weightedFrontier.frontier) - getFrontierGain(weightedFrontier.frontier, costmapResolution_);
-// //      ROS_DEBUG("cost: %f (%f * %f + %f * %f - %f * %f)",
-// //          weightedFrontier.cost,
-// //          potential_scale,
-// //          getFrontierCost(weightedFrontier.frontier),
-// //          orientation_scale,
-// //          getOrientationChange(weightedFrontier.frontier, robot_pose),
-// //          gain_scale,
-// //          getFrontierGain(weightedFrontier.frontier, costmapResolution_) );
-//       weightedFrontiers.push_back(weightedFrontier);
-//     }
     weightedFrontier.cost =
       potential_scale * getFrontierCost(weightedFrontier.frontier)
       + orientation_scale * getOrientationChange(weightedFrontier.frontier, robot_pose)
       - gain_scale * getFrontierGain(weightedFrontier.frontier);
-    weightedFrontiers.push_back(std::move(weightedFrontier));
+    weighted_frontiers_.push_back(std::move(weightedFrontier));
   }
+  std::sort(weighted_frontiers_.begin(), weighted_frontiers_.end());
 
   goals.clear();
-  goals.reserve(weightedFrontiers.size());
-  std::sort(weightedFrontiers.begin(), weightedFrontiers.end());
-  for (uint i = 0; i < weightedFrontiers.size(); i++) {
-    goals.push_back(weightedFrontiers[i].frontier.pose);
+  goals.reserve(weighted_frontiers_.size());
+  for (auto weighted_frontier : weighted_frontiers_) {
+    goals.push_back(weighted_frontier.frontier.pose);
   }
   return (goals.size() > 0);
 }

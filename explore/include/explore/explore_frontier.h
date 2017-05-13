@@ -104,6 +104,7 @@ private:
 
   nav_msgs::OccupancyGrid map_;
   std::vector<Frontier> frontiers_;
+  std::vector<WeightedFrontier> weighted_frontiers_;
 
   size_t last_markers_count_;
 
