@@ -83,7 +83,7 @@ private:
                    const move_base_msgs::MoveBaseResultConstPtr& result,
                    const geometry_msgs::PoseStamped& frontier_goal);
 
-  bool goalOnBlacklist(const geometry_msgs::PoseStamped& goal);
+  bool goalOnBlacklist(const geometry_msgs::Pose& goal);
 
   ros::NodeHandle private_nh_;
   ros::NodeHandle relative_nh_;

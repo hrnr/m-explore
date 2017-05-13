@@ -94,6 +94,17 @@ void Explore::publishFrontiers()
 {
   visualization_msgs::MarkerArray markers;
   explorer_.getVisualizationMarkers(markers);
+
+  // make frontiers on blacklist red
+  for (auto& m : markers.markers) {
+    if (goalOnBlacklist(m.pose)) {
+      m.color.r = 255;
+      m.color.g = 0;
+      m.color.b = 0;
+      m.color.a = 255;
+    }
+  }
+
   ROS_DEBUG("publishing %lu markers", markers.markers.size());
   marker_array_publisher_.publish(markers);
 }
@@ -131,7 +142,7 @@ void Explore::makePlan()
   size_t blacklist_count = 0;
   for (auto& goal : goals) {
     goal_pose.pose = goal;
-    if (goalOnBlacklist(goal_pose)) {
+    if (goalOnBlacklist(goal_pose.pose)) {
       ++blacklist_count;
       continue;
     }
@@ -183,14 +194,14 @@ void Explore::makePlan()
   }
 }
 
-bool Explore::goalOnBlacklist(const geometry_msgs::PoseStamped& goal)
+bool Explore::goalOnBlacklist(const geometry_msgs::Pose& goal)
 {
   costmap_2d::Costmap2D* costmap2d = costmap_client_.getCostmap();
 
   // check if a goal is on the blacklist for goals that we're pursuing
   for (auto& frontier_goal : frontier_blacklist_) {
-    double x_diff = fabs(goal.pose.position.x - frontier_goal.pose.position.x);
-    double y_diff = fabs(goal.pose.position.y - frontier_goal.pose.position.y);
+    double x_diff = fabs(goal.position.x - frontier_goal.pose.position.x);
+    double y_diff = fabs(goal.position.y - frontier_goal.pose.position.y);
 
     if (x_diff < 2 * costmap2d->getResolution() &&
         y_diff < 2 * costmap2d->getResolution())
