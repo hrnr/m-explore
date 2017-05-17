@@ -2,10 +2,22 @@
 #define FRONTIER_SEARCH_H_
 
 #include <costmap_2d/costmap_2d.h>
-#include <frontier_exploration/Frontier.h>
 
 namespace frontier_exploration
 {
+/**
+ * @brief Represents a frontier
+ *
+ */
+struct Frontier {
+  std::uint32_t size;
+  double min_distance;
+  geometry_msgs::Point initial;
+  geometry_msgs::Point centroid;
+  geometry_msgs::Point middle;
+  std::vector<geometry_msgs::Point> points;
+};
+
 /**
  * @brief Thread-safe implementation of a frontier-search task for an input
  * costmap.

@@ -1,12 +1,11 @@
-#include <frontier_exploration/frontier_search.h>
+#include <explore/frontier_search.h>
 
 #include <costmap_2d/cost_values.h>
 #include <costmap_2d/costmap_2d.h>
 #include <geometry_msgs/Point.h>
 #include <boost/foreach.hpp>
 
-#include <frontier_exploration/Frontier.h>
-#include <frontier_exploration/costmap_tools.h>
+#include <explore/costmap_tools.h>
 
 namespace frontier_exploration
 {
@@ -71,7 +70,7 @@ std::list<Frontier> FrontierSearch::searchFrom(geometry_msgs::Point position)
       } else if (isNewFrontierCell(nbr, frontier_flag)) {
         frontier_flag[nbr] = true;
         Frontier new_frontier = buildNewFrontier(nbr, pos, frontier_flag);
-        if (new_frontier.size > 1) {
+        if (new_frontier.size > 10) {
           frontier_list.push_back(new_frontier);
         }
       }
@@ -121,6 +120,11 @@ Frontier FrontierSearch::buildNewFrontier(unsigned int initial_cell,
         double wx, wy;
         costmap_.indexToCells(nbr, mx, my);
         costmap_.mapToWorld(mx, my, wx, wy);
+
+        geometry_msgs::Point point;
+        point.x = wx;
+        point.y = wy;
+        output.points.push_back(point);
 
         // update frontier size
         output.size++;

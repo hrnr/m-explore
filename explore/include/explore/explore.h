@@ -45,12 +45,11 @@
 #include <actionlib/client/simple_action_client.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <move_base_msgs/MoveBaseAction.h>
-#include <navfn/navfn_ros.h>
 #include <ros/ros.h>
 #include <visualization_msgs/MarkerArray.h>
 
 #include <explore/costmap_client.h>
-#include <explore/explore_frontier.h>
+#include <explore/frontier_search.h>
 
 namespace explore
 {
@@ -77,13 +76,14 @@ private:
   /**
    * @brief  Publish a frontiers as markers
    */
-  void publishFrontiers();
+  void visualizeFrontiers(
+      const std::list<frontier_exploration::Frontier>& frontiers);
 
   void reachedGoal(const actionlib::SimpleClientGoalState& status,
                    const move_base_msgs::MoveBaseResultConstPtr& result,
-                   const geometry_msgs::PoseStamped& frontier_goal);
+                   const geometry_msgs::Point& frontier_goal);
 
-  bool goalOnBlacklist(const geometry_msgs::Pose& goal);
+  bool goalOnBlacklist(const geometry_msgs::Point& goal);
 
   ros::NodeHandle private_nh_;
   ros::NodeHandle relative_nh_;
@@ -91,20 +91,22 @@ private:
   tf::TransformListener tf_listener_;
 
   Costmap2DClient costmap_client_;
-  navfn::NavfnROS planner_;
   actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>
       move_base_client_;
-  ExploreFrontier explorer_;
+  frontier_exploration::FrontierSearch search_;
   ros::Timer exploring_timer_;
   ros::Timer oneshot_;
 
-  double planner_frequency_;
-  std::vector<geometry_msgs::PoseStamped> frontier_blacklist_;
-  geometry_msgs::PoseStamped prev_goal_;
-  size_t prev_plan_size_;
+  std::vector<geometry_msgs::Point> frontier_blacklist_;
+  geometry_msgs::Point prev_goal_;
+  double prev_distance_;
   ros::Time last_progress_;
-  ros::Duration progress_timeout_;
+  size_t last_markers_count_;
+
+  // parameters
+  double planner_frequency_;
   double potential_scale_, orientation_scale_, gain_scale_;
+  ros::Duration progress_timeout_;
   bool visualize_;
 };
 }
