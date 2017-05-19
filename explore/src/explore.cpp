@@ -156,7 +156,7 @@ void Explore::visualizeFrontiers(
     m.id = int(id);
     m.pose.position = frontier.initial;
     // scale frontier according to its cost (costier frontiers will be smaller)
-    double scale = min_cost * 0.4 / frontier.cost;
+    double scale = std::min(std::abs(min_cost * 0.4 / frontier.cost), 0.5);
     m.scale.x = scale;
     m.scale.y = scale;
     m.scale.z = scale;
