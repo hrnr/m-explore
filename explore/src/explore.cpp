@@ -227,7 +227,9 @@ void Explore::makePlan()
   // send goal to move_base if we have something new to pursue
   move_base_msgs::MoveBaseGoal goal;
   goal.target_pose.pose.position = target_position;
-  goal.target_pose.pose.orientation.w = 1;
+  goal.target_pose.pose.orientation.w = 1.;
+  goal.target_pose.header.frame_id = costmap_client_.getGlobalFrameID();
+  goal.target_pose.header.stamp = ros::Time::now();
   move_base_client_.sendGoal(
       goal, boost::bind(&Explore::reachedGoal, this, _1, _2, target_position));
 }
