@@ -77,7 +77,7 @@ private:
    * @brief  Publish a frontiers as markers
    */
   void visualizeFrontiers(
-      const std::list<frontier_exploration::Frontier>& frontiers);
+      const std::vector<frontier_exploration::Frontier>& frontiers);
 
   void reachedGoal(const actionlib::SimpleClientGoalState& status,
                    const move_base_msgs::MoveBaseResultConstPtr& result,

@@ -56,11 +56,11 @@ Explore::Explore()
   , tf_listener_(ros::Duration(10.0))
   , costmap_client_(private_nh_, relative_nh_, &tf_listener_)
   , move_base_client_("move_base")
-  , search_(*costmap_client_.getCostmap())
   , prev_distance_(0)
   , last_markers_count_(0)
 {
   double timeout;
+  int min_frontier_size;
   private_nh_.param("planner_frequency", planner_frequency_, 1.0);
   private_nh_.param("progress_timeout", timeout, 30.0);
   progress_timeout_ = ros::Duration(timeout);
@@ -69,6 +69,11 @@ Explore::Explore()
   // TODO: set this back to 0.318 once getOrientationChange is fixed
   private_nh_.param("orientation_scale", orientation_scale_, 0.0);
   private_nh_.param("gain_scale", gain_scale_, 1.0);
+  private_nh_.param("min_frontier_size", min_frontier_size, 10);
+
+  search_ = frontier_exploration::FrontierSearch(costmap_client_.getCostmap(),
+                                                 potential_scale_, gain_scale_,
+                                                 size_t(min_frontier_size));
 
   if (visualize_) {
     marker_array_publisher_ =
@@ -90,7 +95,7 @@ Explore::~Explore()
 }
 
 void Explore::visualizeFrontiers(
-    const std::list<frontier_exploration::Frontier>& frontiers)
+    const std::vector<frontier_exploration::Frontier>& frontiers)
 {
   std_msgs::ColorRGBA blue;
   blue.r = 0;
