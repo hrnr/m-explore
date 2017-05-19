@@ -76,7 +76,7 @@ Explore::Explore()
   }
 
   ROS_INFO("Waiting to connect to move_base server");
-  // move_base_client_.waitForServer();
+  move_base_client_.waitForServer();
   ROS_INFO("Connected to move_base server");
 
   exploring_timer_ =
@@ -200,6 +200,7 @@ void Explore::makePlan()
     stop();
     return;
   }
+  // todo sort frontiers
   geometry_msgs::Point target_position = frontier->centroid;
 
   // time out if we are not making any progress
