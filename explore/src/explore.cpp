@@ -183,6 +183,9 @@ void Explore::makePlan()
   // find frontiers
   auto frontiers = search_.searchFrom({});
   ROS_DEBUG("found %lu frontiers", frontiers.size());
+  for (size_t i = 0; i < frontiers.size(); ++i) {
+    ROS_DEBUG("frontier %zd cost: %f", i, frontiers[i].cost);
+  }
 
   if (frontiers.empty()) {
     stop();
