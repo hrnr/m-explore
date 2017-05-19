@@ -133,7 +133,7 @@ void Explore::visualizeFrontiers(
   m.frame_locked = true;
 
   // weighted frontiers are always sorted
-  double min_cost = frontiers.empty() ? 0. : frontiers.front().size;
+  double min_cost = frontiers.empty() ? 0. : frontiers.front().cost;
 
   m.action = visualization_msgs::Marker::ADD;
   size_t id = 0;
@@ -156,8 +156,7 @@ void Explore::visualizeFrontiers(
     m.id = int(id);
     m.pose.position = frontier.initial;
     // scale frontier according to its cost (costier frontiers will be smaller)
-    double scale = min_cost / frontier.size;
-    scale = 0.4;
+    double scale = min_cost / frontier.cost;
     m.scale.x = scale;
     m.scale.y = scale;
     m.scale.z = scale;
