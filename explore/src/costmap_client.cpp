@@ -184,8 +184,9 @@ void Costmap2DClient::updatePartialMap(
   }
 }
 
-bool Costmap2DClient::getRobotPose(tf::Stamped<tf::Pose>& global_pose) const
+geometry_msgs::Pose Costmap2DClient::getRobotPose() const
 {
+  tf::Stamped<tf::Pose> global_pose;
   global_pose.setIdentity();
   tf::Stamped<tf::Pose> robot_pose;
   robot_pose.setIdentity();
@@ -201,15 +202,15 @@ bool Costmap2DClient::getRobotPose(tf::Stamped<tf::Pose>& global_pose) const
     ROS_ERROR_THROTTLE(1.0, "No Transform available Error looking up robot "
                             "pose: %s\n",
                        ex.what());
-    return false;
+    return {};
   } catch (tf::ConnectivityException& ex) {
     ROS_ERROR_THROTTLE(1.0, "Connectivity Error looking up robot pose: %s\n",
                        ex.what());
-    return false;
+    return {};
   } catch (tf::ExtrapolationException& ex) {
     ROS_ERROR_THROTTLE(1.0, "Extrapolation Error looking up robot pose: %s\n",
                        ex.what());
-    return false;
+    return {};
   }
   // check global_pose timeout
   if (current_time.toSec() - global_pose.stamp_.toSec() >
@@ -218,10 +219,12 @@ bool Costmap2DClient::getRobotPose(tf::Stamped<tf::Pose>& global_pose) const
                            "%.4f, global_pose stamp: %.4f, tolerance: %.4f",
                       current_time.toSec(), global_pose.stamp_.toSec(),
                       transform_tolerance_);
-    return false;
+    return {};
   }
 
-  return true;
+  geometry_msgs::PoseStamped msg;
+  tf::poseStampedTFToMsg(global_pose, msg);
+  return msg.pose;
 }
 
 std::array<unsigned char, 256> init_translation_table()

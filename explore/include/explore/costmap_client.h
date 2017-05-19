@@ -38,6 +38,7 @@
 #define COSTMAP_CLIENT_
 
 #include <costmap_2d/costmap_2d.h>
+#include <geometry_msgs/Pose.h>
 #include <map_msgs/OccupancyGridUpdate.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <ros/ros.h>
@@ -63,11 +64,9 @@ public:
                   const tf::TransformListener* tf_listener);
   /**
    * @brief Get the pose of the robot in the global frame of the costmap
-   * @param global_pose Will be set to the pose of the robot in the global frame
-   * of the costmap
-   * @return True if the pose was set successfully, false otherwise
+   * @return pose of the robot in the global frame of the costmap
    */
-  bool getRobotPose(tf::Stamped<tf::Pose>& global_pose) const;
+  geometry_msgs::Pose getRobotPose() const;
 
   /**
    * @brief Return a pointer to the "master" costmap which receives updates from
@@ -116,7 +115,7 @@ protected:
   costmap_2d::Costmap2D costmap_;
 
   const tf::TransformListener* const tf_;  ///< @brief Used for transforming
-                                           ///point clouds
+                                           /// point clouds
   std::string global_frame_;      ///< @brief The global frame for the costmap
   std::string robot_base_frame_;  ///< @brief The frame_id of the robot base
   double transform_tolerance_;    ///< timeout before transform errors
