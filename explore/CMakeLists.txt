@@ -14,7 +14,6 @@ find_package(catkin REQUIRED COMPONENTS
   tf
   costmap_2d
   actionlib
-  navfn
 )
 
 catkin_package()

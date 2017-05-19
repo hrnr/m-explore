@@ -27,7 +27,6 @@
   <depend>tf</depend>
   <depend>costmap_2d</depend>
   <depend>actionlib</depend>
-  <depend>navfn</depend>
 
   <test_depend>roslaunch</test_depend>
 </package>
