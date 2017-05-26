@@ -244,6 +244,7 @@ void Explore::makePlan()
 
 bool Explore::goalOnBlacklist(const geometry_msgs::Point& goal)
 {
+  constexpr static size_t tolerace = 5;
   costmap_2d::Costmap2D* costmap2d = costmap_client_.getCostmap();
 
   // check if a goal is on the blacklist for goals that we're pursuing
@@ -251,8 +252,8 @@ bool Explore::goalOnBlacklist(const geometry_msgs::Point& goal)
     double x_diff = fabs(goal.x - frontier_goal.x);
     double y_diff = fabs(goal.y - frontier_goal.y);
 
-    if (x_diff < 2 * costmap2d->getResolution() &&
-        y_diff < 2 * costmap2d->getResolution())
+    if (x_diff < tolerace * costmap2d->getResolution() &&
+        y_diff < tolerace * costmap2d->getResolution())
       return true;
   }
   return false;
