@@ -238,7 +238,11 @@ void Explore::makePlan()
   goal.target_pose.header.frame_id = costmap_client_.getGlobalFrameID();
   goal.target_pose.header.stamp = ros::Time::now();
   move_base_client_.sendGoal(
-      goal, boost::bind(&Explore::reachedGoal, this, _1, _2, target_position));
+      goal, [this, target_position](
+                const actionlib::SimpleClientGoalState& status,
+                const move_base_msgs::MoveBaseResultConstPtr& result) {
+        reachedGoal(status, result, target_position);
+      });
 }
 
 bool Explore::goalOnBlacklist(const geometry_msgs::Point& goal)

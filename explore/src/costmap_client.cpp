@@ -64,9 +64,11 @@ Costmap2DClient::Costmap2DClient(ros::NodeHandle& param_nh,
   param_nh.param("transform_tolerance", transform_tolerance_, 0.3);
 
   /* initialize costmap */
-  boost::function<void(const nav_msgs::OccupancyGrid::ConstPtr&)> costmap_cb =
-      std::bind(&Costmap2DClient::updateFullMap, this, std::placeholders::_1);
-  costmap_sub_ = subscription_nh.subscribe(costmap_topic, 1000, costmap_cb);
+  costmap_sub_ = subscription_nh.subscribe<nav_msgs::OccupancyGrid>(
+      costmap_topic, 1000,
+      [this](const nav_msgs::OccupancyGrid::ConstPtr& msg) {
+        updateFullMap(msg);
+      });
   ROS_INFO("Waiting for costmap to become available, topic: %s",
            costmap_topic.c_str());
   auto costmap_msg = ros::topic::waitForMessage<nav_msgs::OccupancyGrid>(
@@ -74,11 +76,12 @@ Costmap2DClient::Costmap2DClient(ros::NodeHandle& param_nh,
   updateFullMap(costmap_msg);
 
   /* subscribe to map updates */
-  boost::function<void(const map_msgs::OccupancyGridUpdate::ConstPtr&)>
-      costmap_updates_cb = std::bind(&Costmap2DClient::updatePartialMap, this,
-                                     std::placeholders::_1);
-  costmap_updates_sub_ = subscription_nh.subscribe(costmap_updates_topic, 1000,
-                                                   costmap_updates_cb);
+  costmap_updates_sub_ =
+      subscription_nh.subscribe<map_msgs::OccupancyGridUpdate>(
+          costmap_updates_topic, 1000,
+          [this](const map_msgs::OccupancyGridUpdate::ConstPtr& msg) {
+            updatePartialMap(msg);
+          });
 
   /* resolve tf prefix for robot_base_frame */
   std::string tf_prefix = tf::getPrefixParam(param_nh);

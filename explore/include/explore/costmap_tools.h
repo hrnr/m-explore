@@ -5,7 +5,6 @@
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/PolygonStamped.h>
 #include <ros/ros.h>
-#include <boost/foreach.hpp>
 
 namespace frontier_exploration
 {
@@ -120,7 +119,7 @@ bool nearestCell(unsigned int& result, unsigned int start, unsigned char val,
     }
 
     // iterate over all adjacent unvisited cells
-    BOOST_FOREACH (unsigned nbr, nhood8(idx, costmap)) {
+    for (unsigned nbr : nhood8(idx, costmap)) {
       if (!visited_flag[nbr]) {
         bfs.push(nbr);
         visited_flag[nbr] = true;
