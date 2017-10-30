@@ -2,8 +2,8 @@
 Changelog for package explore_lite
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.1.0 (2017-10-30)
+------------------
 * explore: get rid of boost
 * explore: rework launchfiles
 * new visualisation of frontiers

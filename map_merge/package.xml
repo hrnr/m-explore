@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>multirobot_map_merge</name>
-  <version>2.0.0</version>
+  <version>2.1.0</version>
 
   <description>Merging multiple maps without knowledge of initial
   positions of robots.</description>
