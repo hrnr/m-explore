@@ -36,7 +36,6 @@
  *********************************************************************/
 
 #include <explore/explore.h>
-#include <explore/explore_frontier.h>
 
 #include <thread>
 
