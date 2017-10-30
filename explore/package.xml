@@ -13,6 +13,8 @@
   <!-- acknowledgements
   <author>Charles DuHadway</author>
   <url>http://ros.org/wiki/explore</url>
+  <author>Paul Bovbel</author>
+  <url>https://github.com/paulbovbel/frontier_exploration</url>
   -->
   <buildtool_depend>catkin</buildtool_depend>
 
