@@ -5,18 +5,22 @@
 <<TOC(4)>>
 
 == Overview ==
-This package provides greedy frontier-based exploration. When node is running, robot will greedily explore its enviroment until no frontiers could be found. Movement commands will be send to [[move_base]].
+This package provides greedy frontier-based exploration. When node is running, robot will greedily explore its environment until no frontiers could be found. Movement commands will be send to [[move_base]].
 
 {{attachment:screenshot.png||width="755px"}}
 
 Unlike similar packages, {{{explore_lite}}} does not create it's own costmap. Node subscribes to <<MsgLink(nav_msgs/OccupancyGrid)>> messages. Commands for robot movement are send to [[move_base]] node.
+
+<<Youtube(op0L0LyGNwY&rel=0)>>
 
 == Architecture ==
 {{{explore_lite}}} uses [[move_base]] for navigation. You need to run properly configured [[move_base]] node.
 
 {{attachment:architecture.svg||width="755px"}}
 
-{{{explore_lite}}} subscribes to a <<MsgLink(nav_msgs/OccupancyGrid)>> and <<MsgLink(map_msgs/OccupancyGridUpdate)>> messages to construct a map where it looks for frontiers. You can either use costmap published by [[move_base]] (ie. `<move_base>/global_costmap/costmap`) or you can use map constructed by mapping algorithm (SLAM). Better results were achieved on maps constructed by SLAM as they usually contain less noise.
+{{{explore_lite}}} subscribes to a <<MsgLink(nav_msgs/OccupancyGrid)>> and <<MsgLink(map_msgs/OccupancyGridUpdate)>> messages to construct a map where it looks for frontiers. You can either use costmap published by [[move_base]] (ie. `<move_base>/global_costmap/costmap`) or you can use map constructed by mapping algorithm (SLAM).
+
+Depending on your environment you may achieve better results with either SLAM map or costmap published by `move_base`. Advantage of `move_base` costmap is the inflation which helps to deal with some very small unexplorable frontiers. When you are using a raw map produced by SLAM you should set the `min_frontier_size` parameter to some reasonable number to deal with the small frontiers. For details on both setups check the `explore.launch` and `explore_costmap.launch` launch files.
 
 == ROS API ==
 {{{
@@ -28,12 +32,12 @@ desc = Provides exploration services offered by this package. Exploration will s
 pub {
   0.name  = ~frontiers
   0.type = visualization_msgs/MarkerArray
-  0.desc = Visualization of frontiers considered by exploring algorithm. Each frontier is visualized as vector in the middle of frontier pointing towards unknown area.
+  0.desc = Visualization of frontiers considered by exploring algorithm. Each frontier is visualized by frontier points in blue and with a small sphere, which visualize the cost of the frontiers (costlier frontiers will have smaller spheres).
 }
 sub {
   0.name = costmap
   0.type = nav_msgs/OccupancyGrid
-  0.desc = Map which will be used for exploration planning. Can be either cost from [[move_base]] or map created by SLAM (see above). Occupancy grid must have got properly marked unknown space, mapping algorithms usually track unknown space by default. If you want to use costmap provided by [[move_base]] you need to enable unknown space tracking by setting `track_unknown_space: true`.
+  0.desc = Map which will be used for exploration planning. Can be either costmap from [[move_base]] or map created by SLAM (see above). Occupancy grid must have got properly marked unknown space, mapping algorithms usually track unknown space by default. If you want to use costmap provided by [[move_base]] you need to enable unknown space tracking by setting `track_unknown_space: true`.
 
   1.name = costmap_updates
   1.type = map_msgs/OccupancyGridUpdate
@@ -74,22 +78,27 @@ param {
   8.name = ~potential_scale
   8.default = `1e-3`
   8.type = double
-  8.desc = Used for weighting frontiers. This multiplicative parameter affects frontier potential component of the frontier weight.
+  8.desc = Used for weighting frontiers. This multiplicative parameter affects frontier potential component of the frontier weight (distance to frontier).
 
   9.name = ~orientation_scale
   9.default = `0`
   9.type = double
-  9.desc = Used for weighting frontiers. This multiplicative parameter affects frontier orientation component of the frontier weight.
+  9.desc = Used for weighting frontiers. This multiplicative parameter affects frontier orientation component of the frontier weight. This parameter does currently nothing and is provided solely for forward compatibility.
 
   10.name = ~gain_scale
   10.default = `1.0`
   10.type = double
-  10.desc = Used for weighting frontiers. This multiplicative parameter affects frontier gain component of the frontier weight.
+  10.desc = Used for weighting frontiers. This multiplicative parameter affects frontier gain component of the frontier weight (frontier size).
 
   11.name = ~transform_tolerance
   11.default = `0.3`
   11.type = double
   11.desc = Transform tolerance to use when transforming robot pose.
+
+  12.name = ~min_frontier_size
+  12.default = `10`
+  12.type = int
+  12.desc = Minimum size of the frontier to consider the frontier as the exploration goal. Currently there is a bug causing the default value to be used all the time.
 }
 
 req_tf {
@@ -109,7 +118,7 @@ act_called {
 
 This package was developed as part of my bachelor thesis at [[http://www.mff.cuni.cz/to.en/|Charles University]] in Prague.
 
-This project uses parts of frontier exploration algorithm from [[explore]] package by Charles !DuHadway.
+This project was initially based on [[explore]] package by Charles !DuHadway. Most of the node has been rewritten since then. The current frontier search algorithm is based on [[frontier_exploration]] by Paul Bovbel.
 
 ## AUTOGENERATED DON'T DELETE
 ## CategoryPackage
