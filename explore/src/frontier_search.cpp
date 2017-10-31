@@ -75,7 +75,8 @@ std::vector<Frontier> FrontierSearch::searchFrom(geometry_msgs::Point position)
       } else if (isNewFrontierCell(nbr, frontier_flag)) {
         frontier_flag[nbr] = true;
         Frontier new_frontier = buildNewFrontier(nbr, pos, frontier_flag);
-        if (new_frontier.size > 10) {
+        // TODO consider map resolution here
+        if (new_frontier.size >= min_frontier_size_) {
           frontier_list.push_back(new_frontier);
         }
       }
