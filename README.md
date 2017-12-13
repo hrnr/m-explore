@@ -7,10 +7,10 @@ ROS packages for multi robot exploration.
 Installing
 ----------
 
-Packages are released for ROS jade and ROS kinetic.
+Packages are released for ROS Kinetic and ROS Lunar.
 
 ```
-	sudo apt install ros-kinetic-multirobot-map-merge ros-kinetic-explore-lite
+	sudo apt install ros-${ROS_DISTRO}-multirobot-map-merge ros-${ROS_DISTRO}-explore-lite
 ```
 
 Building
