@@ -96,9 +96,9 @@ param {
   11.desc = Transform tolerance to use when transforming robot pose.
 
   12.name = ~min_frontier_size
-  12.default = `10`
-  12.type = int
-  12.desc = Minimum size of the frontier to consider the frontier as the exploration goal. Currently there is a bug causing the default value to be used all the time.
+  12.default = `0.5`
+  12.type = double
+  12.desc = Minimum size of the frontier to consider the frontier as the exploration goal. In meters.
 }
 
 req_tf {

@@ -10,6 +10,6 @@
   <param name="orientation_scale" value="0.0"/>
   <param name="gain_scale" value="1.0"/>
   <param name="transform_tolerance" value="0.3"/>
-  <param name="min_frontier_size" value="15"/>
+  <param name="min_frontier_size" value="0.75"/>
 </node>
 </launch>

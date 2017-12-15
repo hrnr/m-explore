@@ -16,7 +16,7 @@ using costmap_2d::FREE_SPACE;
 
 FrontierSearch::FrontierSearch(costmap_2d::Costmap2D* costmap,
                                double potential_scale, double gain_scale,
-                               size_t min_frontier_size)
+                               double min_frontier_size)
   : costmap_(costmap)
   , potential_scale_(potential_scale)
   , gain_scale_(gain_scale)
@@ -75,8 +75,8 @@ std::vector<Frontier> FrontierSearch::searchFrom(geometry_msgs::Point position)
       } else if (isNewFrontierCell(nbr, frontier_flag)) {
         frontier_flag[nbr] = true;
         Frontier new_frontier = buildNewFrontier(nbr, pos, frontier_flag);
-        // TODO consider map resolution here
-        if (new_frontier.size >= min_frontier_size_) {
+        if (new_frontier.size * costmap_->getResolution() >=
+            min_frontier_size_) {
           frontier_list.push_back(new_frontier);
         }
       }
