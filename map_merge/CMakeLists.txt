@@ -3,10 +3,10 @@ project(multirobot_map_merge)
 
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS
-  roscpp
   geometry_msgs
-  nav_msgs
   map_msgs
+  nav_msgs
+  roscpp
   tf2_geometry_msgs
 )
 
@@ -14,7 +14,7 @@ find_package(Boost REQUIRED COMPONENTS thread)
 
 # OpenCV is required for merging without initial positions
 find_package(OpenCV 3 REQUIRED)
-if(OpenCV_VERSION VERSION_LESS "3.0")
+if("${OpenCV_VERSION}" VERSION_LESS "3.0")
   message(FATAL_ERROR "This package needs OpenCV >= 3.0")
 endif()
 
@@ -26,14 +26,20 @@ endif()
 ###################################
 ## catkin specific configuration ##
 ###################################
-catkin_package()
+catkin_package(
+  CATKIN_DEPENDS
+    geometry_msgs
+    map_msgs
+    nav_msgs
+    tf2_geometry_msgs
+)
 
 ###########
 ## Build ##
 ###########
 # c++11 support required
 include(CheckCXXCompilerFlag)
-CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
+check_cxx_compiler_flag("-std=c++11" COMPILER_SUPPORTS_CXX11)
 if(COMPILER_SUPPORTS_CXX11)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 else()
@@ -50,24 +56,35 @@ include_directories(
 
 # we want static linking for now
 add_library(combine_grids STATIC
-  src/combine_grids/merging_pipeline.cpp
-  src/combine_grids/grid_warper.cpp
   src/combine_grids/grid_compositor.cpp
+  src/combine_grids/grid_warper.cpp
+  src/combine_grids/merging_pipeline.cpp
 )
+add_dependencies(combine_grids ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(combine_grids ${OpenCV_LIBRARIES})
 
 add_executable(map_merge
   src/map_merge.cpp
 )
+add_dependencies(map_merge ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(map_merge combine_grids ${catkin_LIBRARIES})
 
 #############
 ## Install ##
 #############
 
+# install nodes, installing combine_grids should not be necessary,
+# but lets make catkin_lint happy
+install(TARGETS combine_grids map_merge
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
 # install roslaunch files
 install(DIRECTORY launch/
-    DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch)
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+)
 
 #############
 ## Testing ##

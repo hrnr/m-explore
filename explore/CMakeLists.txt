@@ -3,27 +3,39 @@ project(explore_lite)
 
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS
-  roscpp
-  std_msgs
-  move_base_msgs
-  visualization_msgs
+  actionlib
+  actionlib_msgs
+  costmap_2d
   geometry_msgs
   map_msgs
+  move_base_msgs
   nav_msgs
-  actionlib_msgs
+  roscpp
+  std_msgs
   tf
-  costmap_2d
-  actionlib
+  visualization_msgs
 )
 
-catkin_package()
+###################################
+## catkin specific configuration ##
+###################################
+catkin_package(
+  CATKIN_DEPENDS
+    actionlib_msgs
+    geometry_msgs
+    map_msgs
+    move_base_msgs
+    nav_msgs
+    std_msgs
+    visualization_msgs
+)
 
 ###########
 ## Build ##
 ###########
 # c++11 support required
 include(CheckCXXCompilerFlag)
-CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
+check_cxx_compiler_flag("-std=c++11" COMPILER_SUPPORTS_CXX11)
 if(COMPILER_SUPPORTS_CXX11)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 else()
@@ -37,19 +49,28 @@ include_directories(
 )
 
 add_executable(explore
-  src/frontier_search.cpp
   src/costmap_client.cpp
   src/explore.cpp
+  src/frontier_search.cpp
 )
+add_dependencies(explore ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(explore ${catkin_LIBRARIES})
 
 #############
 ## Install ##
 #############
 
+# install nodes
+install(TARGETS explore
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
 # install roslaunch files
 install(DIRECTORY launch/
-    DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch)
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+)
 
 #############
 ## Testing ##
