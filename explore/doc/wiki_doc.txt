@@ -9,7 +9,9 @@ This package provides greedy frontier-based exploration. When node is running, r
 
 {{attachment:screenshot.png||width="755px"}}
 
-Unlike similar packages, {{{explore_lite}}} does not create it's own costmap. Node subscribes to <<MsgLink(nav_msgs/OccupancyGrid)>> messages. Commands for robot movement are send to [[move_base]] node.
+Unlike similar packages, {{{explore_lite}}} does not create its own costmap, which makes it easier to configure and more efficient (lighter on resources). Node simply subscribes to <<MsgLink(nav_msgs/OccupancyGrid)>> messages. Commands for robot movement are send to [[move_base]] node.
+
+Node can do frontier filtering and can operate even on non-inflated maps. Goal blacklisting allows to deal with places inaccessible for robot.
 
 <<Youtube(op0L0LyGNwY&rel=0)>>
 
@@ -21,6 +23,16 @@ Unlike similar packages, {{{explore_lite}}} does not create it's own costmap. No
 {{{explore_lite}}} subscribes to a <<MsgLink(nav_msgs/OccupancyGrid)>> and <<MsgLink(map_msgs/OccupancyGridUpdate)>> messages to construct a map where it looks for frontiers. You can either use costmap published by [[move_base]] (ie. `<move_base>/global_costmap/costmap`) or you can use map constructed by mapping algorithm (SLAM).
 
 Depending on your environment you may achieve better results with either SLAM map or costmap published by `move_base`. Advantage of `move_base` costmap is the inflation which helps to deal with some very small unexplorable frontiers. When you are using a raw map produced by SLAM you should set the `min_frontier_size` parameter to some reasonable number to deal with the small frontiers. For details on both setups check the `explore.launch` and `explore_costmap.launch` launch files.
+
+== Setup ==
+
+Before starting experimenting with {{{explore_lite}}} you need to have working [[move_base]] for navigation. You should be able to navigate with [[move_base]] manually through [[rviz]]. Please refer to [[navigation#Tutorials]] for setting up [[move_base]] and the rest of the navigation stack with your robot.
+
+You should be also able to to navigate with [[move_base]] though unknown space in the map. If you set the goal to unknown place in the map, planning and navigating should work. With most planners this should work by default, refer to [[navfn#Parameters]] if you need to setup this for [[navfn]] planner (but should be enabled by default). Navigation through unknown space is required for {{{explore_lite}}}.
+
+If you want to use costmap provided by [[move_base]] you need to enable unknown space tracking by setting `track_unknown_space: true`.
+
+If you have [[move_base]] configured correctly, you can start experimenting with {{{explore_lite}}}. Provided `explore.launch` should work out-of-the box in most cases, but as always you might need to adjust topic names and frame names according to your setup.
 
 == ROS API ==
 {{{
@@ -117,6 +129,18 @@ act_called {
 == Acknowledgements ==
 
 This package was developed as part of my bachelor thesis at [[http://www.mff.cuni.cz/to.en/|Charles University]] in Prague.
+
+{{{
+@masterthesis{Hörner2016,
+  author = {Jiří Hörner},
+  title = {Map-merging for multi-robot system},
+  address = {Prague},
+  year = {2016},
+  school = {Charles University in Prague, Faculty of Mathematics and Physics},
+  type = {Bachelor's thesis},
+  URL = {https://is.cuni.cz/webapps/zzp/detail/174125/},
+}
+}}}
 
 This project was initially based on [[explore]] package by Charles !DuHadway. Most of the node has been rewritten since then. The current frontier search algorithm is based on [[frontier_exploration]] by Paul Bovbel.
 
