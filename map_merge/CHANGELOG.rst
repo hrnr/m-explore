@@ -2,8 +2,8 @@
 Changelog for package multirobot_map_merge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.1.1 (2017-12-16)
+------------------
 * fix bugs in CMakeLists.txt: install nodes in packages, so they get shipped in debian packages. fixes `#11 <https://github.com/hrnr/m-explore/issues/11>`_
 * map_merge: add bibtex to wiki page
 * Contributors: Jiri Horner

@@ -2,8 +2,8 @@
 Changelog for package explore_lite
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.1.1 (2017-12-16)
+------------------
 * explore: fix min_frontier_size bug
   * min_frontier_size parameter was not used to at all
   * adjust min_frontier size filtering according to map resolution
