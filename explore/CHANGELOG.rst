@@ -2,6 +2,16 @@
 Changelog for package explore_lite
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* explore: fix min_frontier_size bug
+  * min_frontier_size parameter was not used to at all
+  * adjust min_frontier size filtering according to map resolution
+* fix bugs in CMakeLists.txt
+  * install nodes in packages, so they get shipped in debian packages. fixes `#11 <https://github.com/hrnr/m-explore/issues/11>`_
+* explore: update documentation
+* Contributors: Jiri Horner
+
 2.1.0 (2017-10-30)
 ------------------
 * explore: get rid of boost
