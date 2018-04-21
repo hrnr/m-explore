@@ -45,11 +45,13 @@
 #include <combine_grids/merging_pipeline.h>
 
 const std::array<const char*, 2> hector_maps = {
-    "map00.pgm", "map05.pgm",
+    "map00.pgm",
+    "map05.pgm",
 };
 
 const std::array<const char*, 2> gmapping_maps = {
-    "2011-08-09-12-22-52.pgm", "2012-01-28-11-12-01.pgm",
+    "2011-08-09-12-22-52.pgm",
+    "2012-01-28-11-12-01.pgm",
 };
 
 constexpr bool verbose_tests = false;
@@ -74,22 +76,13 @@ TEST(MergingPipeline, canStich1Grid)
 
   // sanity of merged grid
   ASSERT_TRUE(static_cast<bool>(merged_grid));
-  EXPECT_FALSE(merged_grid->data.empty());
-  EXPECT_EQ((merged_grid->info.width) * (merged_grid->info.height),
-            merged_grid->data.size());
-  // merged must be the same with original
-  EXPECT_EQ(merged_grid->info.width, map->info.width);
-  EXPECT_EQ(merged_grid->info.height, map->info.height);
-  EXPECT_EQ(merged_grid->data.size(), map->data.size());
-  for (size_t i = 0; i < merged_grid->data.size(); ++i) {
-    EXPECT_EQ(merged_grid->data[i], map->data[i]);
-  }
+  EXPECT_TRUE(consistentData(*merged_grid));
+  // don't use EXPECT_EQ, since it prints too much info
+  EXPECT_TRUE(*merged_grid == *map);
   // check estimated transforms
   auto transforms = merger.getTransforms();
   EXPECT_EQ(transforms.size(), 1);
-  tf2::Transform t;
-  tf2::fromMsg(transforms[0], t);
-  EXPECT_EQ(tf2::Transform::getIdentity(), t);
+  EXPECT_TRUE(isIdentity(transforms[0]));
 }
 
 TEST(MergingPipeline, canStich2Grids)
@@ -102,9 +95,7 @@ TEST(MergingPipeline, canStich2Grids)
 
   // sanity of merged grid
   ASSERT_TRUE(static_cast<bool>(merged_grid));
-  EXPECT_FALSE(merged_grid->data.empty());
-  EXPECT_EQ((merged_grid->info.width) * (merged_grid->info.height),
-            merged_grid->data.size());
+  EXPECT_TRUE(consistentData(*merged_grid));
   // grid size should indicate sucessful merge
   EXPECT_NEAR(2091, merged_grid->info.width, 30);
   EXPECT_NEAR(2091, merged_grid->info.height, 30);
@@ -124,9 +115,7 @@ TEST(MergingPipeline, canStichGridsGmapping)
 
   // sanity of merged grid
   ASSERT_TRUE(static_cast<bool>(merged_grid));
-  EXPECT_FALSE(merged_grid->data.empty());
-  EXPECT_EQ((merged_grid->info.width) * (merged_grid->info.height),
-            merged_grid->data.size());
+  EXPECT_TRUE(consistentData(*merged_grid));
   // grid size should indicate sucessful merge
   EXPECT_NEAR(5427, merged_grid->info.width, 30);
   EXPECT_NEAR(5427, merged_grid->info.height, 30);
@@ -166,15 +155,12 @@ TEST(MergingPipeline, estimationAccuracy)
 
   // sanity of merged grid
   ASSERT_TRUE(static_cast<bool>(merged_grid));
-  EXPECT_FALSE(merged_grid->data.empty());
-  EXPECT_EQ((merged_grid->info.width) * (merged_grid->info.height),
-            merged_grid->data.size());
+  EXPECT_TRUE(consistentData(*merged_grid));
   // transforms
   auto transforms = merger.getTransforms();
   EXPECT_EQ(transforms.size(), 2);
+  EXPECT_TRUE(isIdentity(transforms[0]));
   tf2::Transform t;
-  tf2::fromMsg(transforms[0], t);
-  EXPECT_EQ(tf2::Transform::getIdentity(), t);
   tf2::fromMsg(transforms[1], t);
 
   EXPECT_NEAR(angle, t.getRotation().getAngle(), 1e-2);
@@ -295,6 +281,28 @@ TEST(MergingPipeline, emptyImageWithTransform)
   merger.setTransforms(transforms.begin(), transforms.end());
   EXPECT_EQ(merger.composeGrids(), nullptr);
   EXPECT_EQ(merger.getTransforms().size(), size);
+}
+
+/* one image may be empty */
+TEST(MergingPipeline, oneEmptyImage)
+{
+  std::vector<nav_msgs::OccupancyGridConstPtr> maps{nullptr,
+                                                    loadMap(gmapping_maps[0])};
+  combine_grids::MergingPipeline merger;
+  merger.feed(maps.begin(), maps.end());
+  merger.estimateTransforms();
+  auto merged_grid = merger.composeGrids();
+  auto transforms = merger.getTransforms();
+
+  // transforms
+  EXPECT_EQ(transforms.size(), 2);
+  EXPECT_TRUE(isIdentity(transforms[1]));
+  // merged grid
+  ASSERT_TRUE(static_cast<bool>(merged_grid));
+  EXPECT_TRUE(consistentData(*merged_grid));
+  // don't use EXPECT_EQ, since it prints too much info
+  EXPECT_TRUE(*merged_grid == *maps[1]);
+  EXPECT_FLOAT_EQ(merged_grid->info.resolution, maps[1]->info.resolution);
 }
 
 int main(int argc, char** argv)

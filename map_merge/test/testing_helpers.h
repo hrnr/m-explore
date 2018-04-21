@@ -4,7 +4,6 @@
 #include <nav_msgs/OccupancyGrid.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <opencv2/core/utility.hpp>
-#include <opencv2/core/utility.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <random>
 
@@ -107,6 +106,35 @@ cv::Mat randomTransformMatrix()
        std::sin(angle), std::cos(angle), ty, 0., 0., 1.);
 
   return transform;
+}
+
+static inline bool isIdentity(const geometry_msgs::Transform& transform)
+{
+  tf2::Transform t;
+  tf2::fromMsg(transform, t);
+  return tf2::Transform::getIdentity() == t;
+}
+
+// data size is consistent with height and width
+static inline bool consistentData(const nav_msgs::OccupancyGrid& grid)
+{
+  return grid.info.width * grid.info.height == grid.data.size();
+}
+
+// ignores header, map_load_time and origin
+static inline bool operator==(const nav_msgs::OccupancyGrid& grid1,
+                              const nav_msgs::OccupancyGrid& grid2)
+{
+  bool equal = true;
+  equal &= grid1.info.width == grid2.info.width;
+  equal &= grid1.info.height == grid2.info.height;
+  equal &= std::abs(grid1.info.resolution - grid2.info.resolution) <
+           std::numeric_limits<float>::epsilon();
+  equal &= grid1.data.size() == grid2.data.size();
+  for (size_t i = 0; i < grid1.data.size(); ++i) {
+    equal &= grid1.data[i] == grid2.data[i];
+  }
+  return equal;
 }
 
 #endif  // TESTING_HELPERS_H_
