@@ -179,6 +179,8 @@ void MapMerge::mapMerging()
   merged_map->info.map_load_time = now;
   merged_map->header.stamp = now;
   merged_map->header.frame_id = world_frame_;
+
+  ROS_ASSERT(merged_map->info.resolution > 0.f);
   merged_map_publisher_.publish(merged_map);
 }
 

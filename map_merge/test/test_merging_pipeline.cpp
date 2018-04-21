@@ -96,6 +96,7 @@ TEST(MergingPipeline, canStich2Grids)
   // sanity of merged grid
   ASSERT_TRUE(static_cast<bool>(merged_grid));
   EXPECT_TRUE(consistentData(*merged_grid));
+  EXPECT_GT(merged_grid->info.resolution, 0);
   // grid size should indicate sucessful merge
   EXPECT_NEAR(2091, merged_grid->info.width, 30);
   EXPECT_NEAR(2091, merged_grid->info.height, 30);
@@ -116,6 +117,7 @@ TEST(MergingPipeline, canStichGridsGmapping)
   // sanity of merged grid
   ASSERT_TRUE(static_cast<bool>(merged_grid));
   EXPECT_TRUE(consistentData(*merged_grid));
+  EXPECT_GT(merged_grid->info.resolution, 0);
   // grid size should indicate sucessful merge
   EXPECT_NEAR(5427, merged_grid->info.width, 30);
   EXPECT_NEAR(5427, merged_grid->info.height, 30);
