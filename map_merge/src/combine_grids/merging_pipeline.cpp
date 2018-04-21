@@ -189,6 +189,12 @@ nav_msgs::OccupancyGrid::Ptr MergingPipeline::composeGrids()
       break;
     }
   }
+  // set grid origin to its centre
+  result->info.origin.position.x =
+      -(result->info.width / 2.0) * double(result->info.resolution);
+  result->info.origin.position.y =
+      -(result->info.height / 2.0) * double(result->info.resolution);
+  result->info.origin.orientation.w = 1.0;
 
   return result;
 }

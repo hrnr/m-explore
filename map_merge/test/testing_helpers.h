@@ -115,6 +115,13 @@ static inline bool isIdentity(const geometry_msgs::Transform& transform)
   return tf2::Transform::getIdentity() == t;
 }
 
+static inline bool isIdentity(const geometry_msgs::Quaternion& rotation)
+{
+  tf2::Quaternion q;
+  tf2::fromMsg(rotation, q);
+  return tf2::Quaternion::getIdentity() == q;
+}
+
 // data size is consistent with height and width
 static inline bool consistentData(const nav_msgs::OccupancyGrid& grid)
 {

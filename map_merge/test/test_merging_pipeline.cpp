@@ -56,6 +56,12 @@ const std::array<const char*, 2> gmapping_maps = {
 
 constexpr bool verbose_tests = false;
 
+#define EXPECT_VALID_GRID(grid)                                                \
+  ASSERT_TRUE(static_cast<bool>(grid));                                        \
+  EXPECT_TRUE(consistentData(*grid));                                          \
+  EXPECT_GT(grid->info.resolution, 0);                                         \
+  EXPECT_TRUE(isIdentity(grid->info.origin.orientation))
+
 TEST(MergingPipeline, canStich0Grid)
 {
   std::vector<nav_msgs::OccupancyGridConstPtr> maps;
@@ -74,9 +80,7 @@ TEST(MergingPipeline, canStich1Grid)
   merger.estimateTransforms();
   auto merged_grid = merger.composeGrids();
 
-  // sanity of merged grid
-  ASSERT_TRUE(static_cast<bool>(merged_grid));
-  EXPECT_TRUE(consistentData(*merged_grid));
+  EXPECT_VALID_GRID(merged_grid);
   // don't use EXPECT_EQ, since it prints too much info
   EXPECT_TRUE(*merged_grid == *map);
   // check estimated transforms
@@ -93,10 +97,7 @@ TEST(MergingPipeline, canStich2Grids)
   merger.estimateTransforms();
   auto merged_grid = merger.composeGrids();
 
-  // sanity of merged grid
-  ASSERT_TRUE(static_cast<bool>(merged_grid));
-  EXPECT_TRUE(consistentData(*merged_grid));
-  EXPECT_GT(merged_grid->info.resolution, 0);
+  EXPECT_VALID_GRID(merged_grid);
   // grid size should indicate sucessful merge
   EXPECT_NEAR(2091, merged_grid->info.width, 30);
   EXPECT_NEAR(2091, merged_grid->info.height, 30);
@@ -114,10 +115,7 @@ TEST(MergingPipeline, canStichGridsGmapping)
   merger.estimateTransforms();
   auto merged_grid = merger.composeGrids();
 
-  // sanity of merged grid
-  ASSERT_TRUE(static_cast<bool>(merged_grid));
-  EXPECT_TRUE(consistentData(*merged_grid));
-  EXPECT_GT(merged_grid->info.resolution, 0);
+  EXPECT_VALID_GRID(merged_grid);
   // grid size should indicate sucessful merge
   EXPECT_NEAR(5427, merged_grid->info.width, 30);
   EXPECT_NEAR(5427, merged_grid->info.height, 30);
@@ -155,9 +153,7 @@ TEST(MergingPipeline, estimationAccuracy)
   merger.estimateTransforms();
   auto merged_grid = merger.composeGrids();
 
-  // sanity of merged grid
-  ASSERT_TRUE(static_cast<bool>(merged_grid));
-  EXPECT_TRUE(consistentData(*merged_grid));
+  EXPECT_VALID_GRID(merged_grid);
   // transforms
   auto transforms = merger.getTransforms();
   EXPECT_EQ(transforms.size(), 2);
@@ -296,15 +292,12 @@ TEST(MergingPipeline, oneEmptyImage)
   auto merged_grid = merger.composeGrids();
   auto transforms = merger.getTransforms();
 
+  EXPECT_VALID_GRID(merged_grid);
+  // don't use EXPECT_EQ, since it prints too much info
+  EXPECT_TRUE(*merged_grid == *maps[1]);
   // transforms
   EXPECT_EQ(transforms.size(), 2);
   EXPECT_TRUE(isIdentity(transforms[1]));
-  // merged grid
-  ASSERT_TRUE(static_cast<bool>(merged_grid));
-  EXPECT_TRUE(consistentData(*merged_grid));
-  // don't use EXPECT_EQ, since it prints too much info
-  EXPECT_TRUE(*merged_grid == *maps[1]);
-  EXPECT_FLOAT_EQ(merged_grid->info.resolution, maps[1]->info.resolution);
 }
 
 int main(int argc, char** argv)
