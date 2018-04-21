@@ -1,0 +1,28 @@
+<!--
+showcases map_merge with static maps served by map_server
+
+you can run this with test maps provided in m-explore-extra repo
+https://github.com/hrnr/m-explore-extra
+
+roslaunch multirobot_map_merge from_map_server.launch map1:=PATH_TO_m-explore-extra/map_merge/gmapping_maps/2011-08-09-12-22-52.yaml map2:=PATH_TO_m-explore-extra/map_merge/gmapping_maps/2012-01-28-11-12-01.yaml rviz:=true
+-->
+<launch>
+  <arg name="map1" default="map1.yaml"/>
+  <arg name="map2" default="map2.yaml"/>
+  <arg name="rviz" default="false"/>
+
+  <include file="$(find multirobot_map_merge)/launch/map_merge.launch"/>
+
+  <node pkg="map_server" type="map_server" name="robot1_publisher" args="$(arg map1)" output="screen">
+    <param name="frame_id" value="robot1"/>
+    <remap from="map" to="/robot1/map"/>
+    <remap from="map_metadata" to="/robot1/map_metadata"/>
+  </node>
+  <node pkg="map_server" type="map_server" name="robot2_publisher" args="$(arg map2)" output="screen">
+    <param name="frame_id" value="robot2"/>
+    <remap from="map" to="/robot2/map"/>
+    <remap from="map_metadata" to="/robot2/map_metadata"/>
+  </node>
+
+  <node if="$(arg rviz)" pkg="rviz" type="rviz" name="rviz" args="-d $(find multirobot_map_merge)/launch/map_merge.rviz"/>
+</launch>

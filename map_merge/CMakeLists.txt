@@ -105,6 +105,8 @@ if(CATKIN_ENABLE_TESTING)
   target_link_libraries(test_merging_pipeline combine_grids ${catkin_LIBRARIES})
 
   # test all launch files
-  roslaunch_add_file_check(launch)
+  # do not test from_map_server.launch as we don't want to add dependency on map_server and this
+  # launchfile is not critical
+  roslaunch_add_file_check(launch/map_merge.launch)
   roslaunch_add_file_check(launch/experiments)
 endif()
