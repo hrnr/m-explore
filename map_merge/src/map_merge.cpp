@@ -54,7 +54,7 @@ MapMerge::MapMerge() : subscriptions_size_(0)
   private_nh.param("discovery_rate", discovery_rate_, 0.05);
   private_nh.param("estimation_rate", estimation_rate_, 0.5);
   private_nh.param("known_init_poses", have_initial_poses_, true);
-  private_nh.param("estimation_confidence", confidence_treshold_, 1.0);
+  private_nh.param("estimation_confidence", confidence_threshold_, 1.0);
   private_nh.param<std::string>("robot_map_topic", robot_map_topic_, "map");
   private_nh.param<std::string>("robot_map_updates_topic",
                                 robot_map_updates_topic_, "map_updates");
@@ -199,7 +199,9 @@ void MapMerge::poseEstimation()
 
   std::lock_guard<std::mutex> lock(pipeline_mutex_);
   pipeline_.feed(grids.begin(), grids.end());
-  pipeline_.estimateTransforms();
+  // TODO allow user to change feature type
+  pipeline_.estimateTransforms(combine_grids::FeatureType::AKAZE,
+                               confidence_threshold_);
 }
 
 void MapMerge::fullMapUpdate(const nav_msgs::OccupancyGrid::ConstPtr& msg,
