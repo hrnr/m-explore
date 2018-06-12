@@ -13,7 +13,7 @@ nav_msgs::OccupancyGridConstPtr loadMap(const std::string& filename);
 void saveMap(const std::string& filename,
              const nav_msgs::OccupancyGridConstPtr& map);
 std::tuple<double, double, double> randomAngleTxTy();
-tf2::Transform randomTransform();
+geometry_msgs::Transform randomTransform();
 cv::Mat randomTransformMatrix();
 
 /* map_server is really bad. until there is no replacement I will implement it
@@ -84,17 +84,28 @@ std::tuple<double, double, double> randomAngleTxTy()
                                             translation_dis(g));
 }
 
-tf2::Transform randomTransform()
+geometry_msgs::Transform randomTransform()
 {
   double angle, tx, ty;
   std::tie(angle, tx, ty) = randomAngleTxTy();
   tf2::Transform transform;
   tf2::Quaternion rotation;
   rotation.setEuler(0., 0., angle);
+  rotation.normalize();
   transform.setRotation(rotation);
   transform.setOrigin(tf2::Vector3(tx, ty, 0.));
 
-  return transform;
+  auto msg = toMsg(transform);
+  // normalize quaternion such that w > 0 (q and -q represents the same
+  // transformation)
+  if (msg.rotation.w < 0.) {
+    msg.rotation.x *= -1.;
+    msg.rotation.y *= -1.;
+    msg.rotation.z *= -1.;
+    msg.rotation.w *= -1.;
+  }
+
+  return msg;
 }
 
 cv::Mat randomTransformMatrix()

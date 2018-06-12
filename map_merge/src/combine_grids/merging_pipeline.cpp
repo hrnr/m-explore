@@ -181,14 +181,24 @@ nav_msgs::OccupancyGrid::Ptr MergingPipeline::composeGrids()
   internal::GridCompositor compositor;
   result = compositor.compose(imgs_warped, rois);
 
-  // set correct resolution to output grid
+  // set correct resolution to output grid. use resolution of identity (works
+  // for estimated trasforms), or any resolution (works for know_init_positions)
+  // - in that case all resolutions should be the same.
+  float any_resolution = 0.0;
   for (size_t i = 0; i < transforms_.size(); ++i) {
     // check if this transform is the reference frame
     if (isIdentity(transforms_[i])) {
       result->info.resolution = grids_[i]->info.resolution;
       break;
     }
+    if (grids_[i]) {
+      any_resolution = grids_[i]->info.resolution;
+    }
   }
+  if (result->info.resolution <= 0.f) {
+    result->info.resolution = any_resolution;
+  }
+
   // set grid origin to its centre
   result->info.origin.position.x =
       -(result->info.width / 2.0) * double(result->info.resolution);

@@ -172,16 +172,7 @@ TEST(MergingPipeline, transformsRoundTrip)
   combine_grids::MergingPipeline merger;
   merger.feed(&map, &map + 1);
   for (size_t i = 0; i < 1000; ++i) {
-    auto t = randomTransform();
-    auto in_transform = toMsg(t);
-    // normalize input quaternion such that w > 0 (q and -q represents the same
-    // transformation)
-    if (in_transform.rotation.w < 0.) {
-      in_transform.rotation.x *= -1.;
-      in_transform.rotation.y *= -1.;
-      in_transform.rotation.z *= -1.;
-      in_transform.rotation.w *= -1.;
-    }
+    auto in_transform = randomTransform();
     merger.setTransforms(&in_transform, &in_transform + 1);
 
     auto out_transforms = merger.getTransforms();
@@ -205,8 +196,7 @@ TEST(MergingPipeline, setTransformsInternal)
 
   for (size_t i = 0; i < 1000; ++i) {
     auto transform = randomTransform();
-    geometry_msgs::Transform t = toMsg(transform);
-    merger.setTransforms(&t, &t + 1);
+    merger.setTransforms(&transform, &transform + 1);
 
     ASSERT_EQ(merger.transforms_.size(), 1);
     auto& transform_internal = merger.transforms_[0];
@@ -214,7 +204,9 @@ TEST(MergingPipeline, setTransformsInternal)
     tf2::Vector3 a[2] = {{1., 0., 1.}, {0., 1., 1.}};
     cv::Point3d b[2] = {{1., 0., 1.}, {0., 1., 1.}};
     for (auto j : {0, 1}) {
-      auto p1 = transform * a[j];
+      tf2::Transform t;
+      fromMsg(transform, t);
+      auto p1 = t * a[j];
       cv::Mat p2 = transform_internal * cv::Mat(b[j]);
       // some precision is naturally lost during conversion, float precision is
       // still good for us
@@ -298,6 +290,23 @@ TEST(MergingPipeline, oneEmptyImage)
   // transforms
   EXPECT_EQ(transforms.size(), 2);
   EXPECT_TRUE(isIdentity(transforms[1]));
+}
+
+// non-identity known positions etc.
+TEST(MergingPipeline, knownInitPositions)
+{
+  auto maps = loadMaps(gmapping_maps.begin(), gmapping_maps.end());
+  combine_grids::MergingPipeline merger;
+  merger.feed(maps.begin(), maps.end());
+
+  for (size_t i = 0; i < 5; ++i) {
+    std::vector<geometry_msgs::Transform> transforms{randomTransform(),
+                                                     randomTransform()};
+    merger.setTransforms(transforms.begin(), transforms.end());
+    auto merged_grid = merger.composeGrids();
+
+    EXPECT_VALID_GRID(merged_grid);
+  }
 }
 
 int main(int argc, char** argv)
