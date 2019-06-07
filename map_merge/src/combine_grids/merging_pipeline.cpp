@@ -214,9 +214,12 @@ std::vector<geometry_msgs::Transform> MergingPipeline::getTransforms() const
   std::vector<geometry_msgs::Transform> result;
   result.reserve(transforms_.size());
 
+  geometry_msgs::Transform identity_quaternion;
+  identity_quaternion.rotation.w = 1;
+
   for (auto& transform : transforms_) {
     if (transform.empty()) {
-      result.emplace_back();
+      result.emplace_back(identity_quaternion);
       continue;
     }
 

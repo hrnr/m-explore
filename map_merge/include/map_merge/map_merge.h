@@ -45,8 +45,10 @@
 
 #include <combine_grids/merging_pipeline.h>
 #include <geometry_msgs/Pose.h>
+#include <geometry_msgs/TransformStamped.h>
 #include <map_msgs/OccupancyGridUpdate.h>
 #include <nav_msgs/OccupancyGrid.h>
+#include <tf2_ros/transform_broadcaster.h>
 #include <ros/ros.h>
 #include <boost/thread.hpp>
 
@@ -56,6 +58,7 @@ struct MapSubscription {
   // protects consistency of writable_map and readonly_map
   // also protects reads and writes of shared_ptrs
   std::mutex mutex;
+  std::string map_frame;
 
   geometry_msgs::Transform initial_pose;
   nav_msgs::OccupancyGrid::Ptr writable_map;
@@ -80,6 +83,7 @@ private:
   std::string robot_namespace_;
   std::string world_frame_;
   bool have_initial_poses_;
+  bool publish_tf = true;
 
   // publishing
   ros::Publisher merged_map_publisher_;
@@ -91,6 +95,18 @@ private:
   boost::shared_mutex subscriptions_mutex_;
   combine_grids::MergingPipeline pipeline_;
   std::mutex pipeline_mutex_;
+
+  // publishing tfs
+  std::vector<std::string> map_frames_;
+  std::vector<geometry_msgs::TransformStamped> tf_transforms_;
+  tf2_ros::TransformBroadcaster tf_publisher_;
+  std::thread tf_thread_;             //  tf needs it own thread
+  std::atomic_flag tf_current_flag_;  // whether tf_transforms_ are up to date
+                                        // with transforms_
+
+
+  void publishTF();
+  std::vector<geometry_msgs::TransformStamped> StampTransforms(const std::vector<geometry_msgs::Transform>, const std::string& frame);
 
   std::string robotNameFromTopic(const std::string& topic);
   bool isRobotMapTopic(const ros::master::TopicInfo& topic);

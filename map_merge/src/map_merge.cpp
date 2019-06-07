@@ -60,11 +60,14 @@ MapMerge::MapMerge() : subscriptions_size_(0)
                                 robot_map_updates_topic_, "map_updates");
   private_nh.param<std::string>("robot_namespace", robot_namespace_, "");
   private_nh.param<std::string>("merged_map_topic", merged_map_topic, "map");
-  private_nh.param<std::string>("world_frame", world_frame_, "world");
+  private_nh.param<std::string>("world_frame", world_frame_, "map");
+  private_nh.param("publish_tf", publish_tf, true);
 
   /* publishing */
   merged_map_publisher_ =
       node_.advertise<nav_msgs::OccupancyGrid>(merged_map_topic, 50, true);
+  tf_current_flag_.clear();
+
 }
 
 /*
@@ -186,22 +189,29 @@ void MapMerge::mapMerging()
 
 void MapMerge::poseEstimation()
 {
+  bool new_transform = false;
   ROS_DEBUG("Grid pose estimation started.");
   std::vector<nav_msgs::OccupancyGridConstPtr> grids;
+
   grids.reserve(subscriptions_size_);
   {
+	map_frames_.clear();
     boost::shared_lock<boost::shared_mutex> lock(subscriptions_mutex_);
     for (auto& subscription : subscriptions_) {
       std::lock_guard<std::mutex> s_lock(subscription.mutex);
       grids.push_back(subscription.readonly_map);
+      map_frames_.push_back(subscription.map_frame);
     }
   }
 
   std::lock_guard<std::mutex> lock(pipeline_mutex_);
   pipeline_.feed(grids.begin(), grids.end());
   // TODO allow user to change feature type
-  pipeline_.estimateTransforms(combine_grids::FeatureType::AKAZE,
+  new_transform = pipeline_.estimateTransforms(combine_grids::FeatureType::AKAZE,
                                confidence_threshold_);
+  if (new_transform){
+	  tf_current_flag_.clear();
+  }
 }
 
 void MapMerge::fullMapUpdate(const nav_msgs::OccupancyGrid::ConstPtr& msg,
@@ -215,6 +225,7 @@ void MapMerge::fullMapUpdate(const nav_msgs::OccupancyGrid::ConstPtr& msg,
     return;
   }
 
+  subscription.map_frame = msg->header.frame_id;
   subscription.readonly_map = msg;
   subscription.writable_map = nullptr;
 }
@@ -378,6 +389,41 @@ void MapMerge::executeposeEstimation()
   }
 }
 
+void MapMerge::publishTF()
+{
+  if (!tf_current_flag_.test_and_set()) {
+	// need to recalculate stored transforms
+	auto transforms = pipeline_.getTransforms();  // this is thread-safe access
+	//auto maps = getMaps();
+	tf_transforms_ = StampTransforms(transforms, world_frame_);
+  }
+  if (tf_transforms_.empty()) {
+	return;
+  }
+
+  // no locking. tf_transforms_ is always accessed only from tf thread
+  for (auto& transform : tf_transforms_) {
+	  tf_publisher_.sendTransform(transform);
+  }
+}
+
+std::vector<geometry_msgs::TransformStamped> MapMerge::StampTransforms(const std::vector<geometry_msgs::Transform> transforms_, const std::string& frame)
+{
+	std::vector<geometry_msgs::TransformStamped> output;
+	output.reserve(transforms_.size());
+	int ii = 0;
+	for (auto transform : transforms_){
+		geometry_msgs::TransformStamped tf_stamped;
+		tf_stamped.transform = transform;
+		tf_stamped.child_frame_id = map_frames_[ii];
+		tf_stamped.header.frame_id = "world_frame_";
+		tf_stamped.header.stamp = ros::Time::now();
+		output.push_back(tf_stamped);
+		ii++;
+	}
+	return output;
+}
+
 /*
  * spin()
  */
@@ -387,6 +433,15 @@ void MapMerge::spin()
   std::thread merging_thr([this]() { executemapMerging(); });
   std::thread subscribing_thr([this]() { executetopicSubscribing(); });
   std::thread estimation_thr([this]() { executeposeEstimation(); });
+  if (publish_tf) {
+      tf_thread_ = std::thread([this]() {
+        ros::Rate rate(30.0);
+        while (node_.ok()) {
+          publishTF();
+          rate.sleep();
+        }
+      });
+    }
   ros::spin();
   estimation_thr.join();
   merging_thr.join();
