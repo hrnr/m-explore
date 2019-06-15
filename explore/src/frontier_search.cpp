@@ -58,11 +58,11 @@ std::vector<Frontier> FrontierSearch::searchFrom(geometry_msgs::Point position)
     ROS_WARN("Could not find nearby clear cell to start search");
   }
   visited_flag[bfs.front()] = true;
-
+  int distance_cnt = 0;
   while (!bfs.empty()) {
     unsigned int idx = bfs.front();
     bfs.pop();
-
+      distance_cnt++;
     // iterate over 4-connected neighbourhood
     for (unsigned nbr : nhood4(idx, *costmap_)) {
       // add to queue all free, unvisited cells, use descending search in case
@@ -74,7 +74,7 @@ std::vector<Frontier> FrontierSearch::searchFrom(geometry_msgs::Point position)
         // neighbour)
       } else if (isNewFrontierCell(nbr, frontier_flag)) {
         frontier_flag[nbr] = true;
-        Frontier new_frontier = buildNewFrontier(nbr, pos, frontier_flag);
+        Frontier new_frontier = buildNewFrontier(nbr, pos, frontier_flag, distance_cnt);
         if (new_frontier.size * costmap_->getResolution() >=
             min_frontier_size_) {
           frontier_list.push_back(new_frontier);
@@ -96,7 +96,7 @@ std::vector<Frontier> FrontierSearch::searchFrom(geometry_msgs::Point position)
 
 Frontier FrontierSearch::buildNewFrontier(unsigned int initial_cell,
                                           unsigned int reference,
-                                          std::vector<bool>& frontier_flag)
+                                          std::vector<bool>& frontier_flag, int dist)
 {
   // initialize frontier structure
   Frontier output;
@@ -119,11 +119,10 @@ Frontier FrontierSearch::buildNewFrontier(unsigned int initial_cell,
   double reference_x, reference_y;
   costmap_->indexToCells(reference, rx, ry);
   costmap_->mapToWorld(rx, ry, reference_x, reference_y);
-
   while (!bfs.empty()) {
     unsigned int idx = bfs.front();
     bfs.pop();
-
+      
     // try adding cells in 8-connected neighborhood to frontier
     for (unsigned int nbr : nhood8(idx, *costmap_)) {
       // check if neighbour is a potential frontier cell
@@ -166,6 +165,7 @@ Frontier FrontierSearch::buildNewFrontier(unsigned int initial_cell,
   // average out frontier centroid
   output.centroid.x /= output.size;
   output.centroid.y /= output.size;
+  output.min_distance += (double)dist*costmap_->getResolution();  // recover distance 
   return output;
 }
 
