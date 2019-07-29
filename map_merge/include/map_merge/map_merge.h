@@ -77,6 +77,7 @@ private:
   double merging_rate_;
   double discovery_rate_;
   double estimation_rate_;
+  double publish_rate_;
   double confidence_threshold_;
   std::string robot_map_topic_;
   std::string robot_map_updates_topic_;
@@ -106,7 +107,7 @@ private:
 
 
   void publishTF();
-  std::vector<geometry_msgs::TransformStamped> StampTransforms(const std::vector<geometry_msgs::Transform>, const std::string& frame);
+  std::vector<geometry_msgs::TransformStamped> stampTransforms(const std::vector<geometry_msgs::Transform>);
 
   std::string robotNameFromTopic(const std::string& topic);
   bool isRobotMapTopic(const ros::master::TopicInfo& topic);
@@ -124,6 +125,7 @@ public:
   void executetopicSubscribing();
   void executemapMerging();
   void executeposeEstimation();
+  void executeposePublishTf();
 
   void topicSubscribing();
   void mapMerging();

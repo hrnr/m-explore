@@ -50,10 +50,11 @@ MapMerge::MapMerge() : subscriptions_size_(0)
   std::string frame_id;
   std::string merged_map_topic;
 
-  private_nh.param("merging_rate", merging_rate_, 4.0);
+  private_nh.param("merging_rate", merging_rate_, 0.5);
   private_nh.param("discovery_rate", discovery_rate_, 0.05);
   private_nh.param("estimation_rate", estimation_rate_, 0.5);
-  private_nh.param("known_init_poses", have_initial_poses_, true);
+  private_nh.param("publish_rate", publish_rate_, 1.0);
+  private_nh.param("known_init_poses", have_initial_poses_, false);
   private_nh.param("estimation_confidence", confidence_threshold_, 1.0);
   private_nh.param<std::string>("robot_map_topic", robot_map_topic_, "map");
   private_nh.param<std::string>("robot_map_updates_topic",
@@ -389,34 +390,46 @@ void MapMerge::executeposeEstimation()
   }
 }
 
+void MapMerge::executeposePublishTf()
+{
+	if (publish_tf)
+	{
+		ros::Rate r(publish_rate_);
+		while (node_.ok())
+		{
+		  publishTF();
+		  r.sleep();
+		}
+	}
+}
+
 void MapMerge::publishTF()
 {
   if (!tf_current_flag_.test_and_set()) {
+	std::lock_guard<std::mutex> lock(pipeline_mutex_);
 	// need to recalculate stored transforms
-	auto transforms = pipeline_.getTransforms();  // this is thread-safe access
-	//auto maps = getMaps();
-	tf_transforms_ = StampTransforms(transforms, world_frame_);
+	auto transforms = pipeline_.getTransforms();
+	tf_transforms_ = stampTransforms(transforms);
   }
   if (tf_transforms_.empty()) {
 	return;
   }
 
-  // no locking. tf_transforms_ is always accessed only from tf thread
   for (auto& transform : tf_transforms_) {
 	  tf_publisher_.sendTransform(transform);
   }
 }
 
-std::vector<geometry_msgs::TransformStamped> MapMerge::StampTransforms(const std::vector<geometry_msgs::Transform> transforms_, const std::string& frame)
+std::vector<geometry_msgs::TransformStamped> MapMerge::stampTransforms(const std::vector<geometry_msgs::Transform> transforms)
 {
 	std::vector<geometry_msgs::TransformStamped> output;
-	output.reserve(transforms_.size());
+	output.reserve(transforms.size());
 	int ii = 0;
-	for (auto transform : transforms_){
+	for (auto transform : transforms){
 		geometry_msgs::TransformStamped tf_stamped;
 		tf_stamped.transform = transform;
 		tf_stamped.child_frame_id = map_frames_[ii];
-		tf_stamped.header.frame_id = "world_frame_";
+		tf_stamped.header.frame_id = world_frame_;
 		tf_stamped.header.stamp = ros::Time::now();
 		output.push_back(tf_stamped);
 		ii++;
@@ -433,15 +446,8 @@ void MapMerge::spin()
   std::thread merging_thr([this]() { executemapMerging(); });
   std::thread subscribing_thr([this]() { executetopicSubscribing(); });
   std::thread estimation_thr([this]() { executeposeEstimation(); });
-  if (publish_tf) {
-      tf_thread_ = std::thread([this]() {
-        ros::Rate rate(30.0);
-        while (node_.ok()) {
-          publishTF();
-          rate.sleep();
-        }
-      });
-    }
+  std::thread publish_tf_thr([this]() { executeposePublishTf(); });
+
   ros::spin();
   estimation_thr.join();
   merging_thr.join();
