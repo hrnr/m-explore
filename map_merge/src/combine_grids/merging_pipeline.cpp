@@ -232,10 +232,23 @@ std::vector<geometry_msgs::Transform> MergingPipeline::getTransforms() const
     // our rotation is in fact only 2D, thus quaternion can be simplified
     double a = transform.at<double>(0, 0);
     double b = transform.at<double>(1, 0);
-    ros_transform.rotation.w = std::sqrt(2. + 2. * a) * 0.5;
+    ROS_DEBUG("transform.a: %f", a);
+	ROS_DEBUG("transform.b: %f", b);
+	ROS_DEBUG("transform.c: %f", transform.at<double>(0, 1));
+	ROS_DEBUG("transform.d: %f", transform.at<double>(1, 1));
+
+    if (std::abs(a) > 1){
+    	a = std::copysign(1, a);
+    }
+    double alpha = std::acos(a);
+    ros_transform.rotation.w = std::cos(alpha * 0.5); //std::sqrt(2. + 2. * a) * 0.5;
     ros_transform.rotation.x = 0.;
     ros_transform.rotation.y = 0.;
-    ros_transform.rotation.z = std::copysign(std::sqrt(2. - 2. * a) * 0.5, b);
+    ros_transform.rotation.z = std::sin(alpha * 0.5); //std::copysign(std::sqrt(2. - 2. * a) * 0.5, b);
+
+    ROS_DEBUG("alpha: %f", alpha);
+    ROS_DEBUG("rotation w: %f", ros_transform.rotation.w);
+    ROS_DEBUG("rotation z: %f", ros_transform.rotation.z);
 
     result.push_back(ros_transform);
   }

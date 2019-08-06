@@ -1,5 +1,4 @@
 <launch>
-<group ns="map_merge">
   <node pkg="multirobot_map_merge" type="map_merge" respawn="false" name="map_merge" output="screen">
     <param name="robot_map_topic" value="map"/>
     <param name="robot_namespace" value=""/>
@@ -12,5 +11,4 @@
     <param name="publish_rate" value="1.0"/>
     <param name="estimation_confidence" value="1.0"/>
   </node>
-</group>
 </launch>
