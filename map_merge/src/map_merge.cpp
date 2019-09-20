@@ -223,12 +223,14 @@ void MapMerge::fullMapUpdate(const nav_msgs::OccupancyGrid::ConstPtr& msg,
   if (subscription.readonly_map &&
       subscription.readonly_map->header.stamp > msg->header.stamp) {
     // we have been overrunned by faster update. our work was useless.
+	  ROS_DEBUG("received full map update but overrunned by timestamp");
     return;
   }
 
   subscription.map_frame = msg->header.frame_id;
   subscription.readonly_map = msg;
   subscription.writable_map = nullptr;
+  //ROS_DEBUG("Frame of map added: %s", subscription.map_frame.c_str());
 }
 
 void MapMerge::partialMapUpdate(
@@ -429,6 +431,7 @@ std::vector<geometry_msgs::TransformStamped> MapMerge::stampTransforms(const std
 		geometry_msgs::TransformStamped tf_stamped;
 		tf_stamped.transform = transform;
 		tf_stamped.child_frame_id = map_frames_[ii];
+		ROS_DEBUG("map frame_name %s: ", tf_stamped.child_frame_id.c_str());
 		tf_stamped.header.frame_id = world_frame_;
 		tf_stamped.header.stamp = ros::Time::now();
 		output.push_back(tf_stamped);

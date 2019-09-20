@@ -69,6 +69,10 @@ private:
   std::vector<nav_msgs::OccupancyGrid::ConstPtr> grids_;
   std::vector<cv::Mat> images_;
   std::vector<cv::Mat> transforms_;
+  float result_map_width;
+  float result_map_height;
+  std::vector<cv::Rect> roi_info_;
+  cv::Rect complete_roi_;
 };
 
 template <typename InputIt>

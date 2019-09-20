@@ -76,10 +76,6 @@ cv::Rect GridWarper::warpRoi(const cv::Mat& grid, const cv::Mat& transform)
   // 3D rotation
   cv::Mat R = cv::Mat::eye(3, 3, CV_32F);
   H.colRange(0, 2).copyTo(R.rowRange(0, 2).colRange(0, 2));
-  ROS_DEBUG("rotation matrix a: %f", R.at<float>(0,0));
-  ROS_DEBUG("rotation matrix b: %f",R.at<float>(0,1));
-  ROS_DEBUG("rotation matrix c: %f",R.at<float>(1,0));
-  ROS_DEBUG("rotation matrix d: %f",R.at<float>(1,1));
 
   return warper->warpRoi(grid.size(), cv::Mat::eye(3, 3, CV_32F), R, T);
 }

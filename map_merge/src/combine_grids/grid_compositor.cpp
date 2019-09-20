@@ -58,8 +58,16 @@ nav_msgs::OccupancyGrid::Ptr GridCompositor::compose(
   for (auto& roi : rois) {
     corners.push_back(roi.tl());
     sizes.push_back(roi.size());
+    ROS_DEBUG("In Compose, roi.tl().x: %f", roi.tl().x * 0.05);
+    ROS_DEBUG("In Compose, roi.tl().y: %f", roi.tl().y * 0.05);
+	ROS_DEBUG("In Compose, roi.size().height: %f", roi.size().height * 0.05);
+	ROS_DEBUG("In Compose, roi.size().width: %f", roi.size().width * 0.05);
   }
   cv::Rect dst_roi = cv::detail::resultRoi(corners, sizes);
+  ROS_DEBUG("In Compose, dst_roi.height: %f", dst_roi.height * 0.05);
+  ROS_DEBUG("In Compose, dst_roi.width: %f", dst_roi.width * 0.05);
+  ROS_DEBUG("In Compose, dst_roi.x: %f", dst_roi.x * 0.05);
+  ROS_DEBUG("In Compose, dst_roi.y: %f", dst_roi.y * 0.05);
 
   result_grid->info.width = static_cast<uint>(dst_roi.width);
   result_grid->info.height = static_cast<uint>(dst_roi.height);
