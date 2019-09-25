@@ -69,8 +69,8 @@ private:
   std::vector<nav_msgs::OccupancyGrid::ConstPtr> grids_;
   std::vector<cv::Mat> images_;
   std::vector<cv::Mat> transforms_;
-  float result_map_width;
-  float result_map_height;
+  float result_map_width = 0.0;
+  float result_map_height = 0.0;
   std::vector<cv::Rect> roi_info_;
   cv::Rect complete_roi_;
 };
