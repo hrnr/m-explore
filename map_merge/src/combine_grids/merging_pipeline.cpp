@@ -275,28 +275,28 @@ std::vector<geometry_msgs::Transform> MergingPipeline::getTransforms() const
 		ROS_DEBUG("cosinus modified: %f", a);
 		ROS_DEBUG("angle: %f", alpha);
 
-		// Create map corners
+		// Create map corners wrt its origin
 		corners.clear();
 		for (int i = 0; i < 4; i++){
 			if (i == 0){
-				corners[i].x = 0.0f;
-				corners[i].y = 0.0f;
+				corners[i].x = 0.0f + origin_x;
+				corners[i].y = 0.0f + origin_y;
 			}
 			if (i == 1){
-				corners[i].x = 0.0f;
-				corners[i].y = map_height;
+				corners[i].x = 0.0f + origin_x;
+				corners[i].y = map_height + origin_y;
 			}
 			if (i == 2){
-				corners[i].x = map_width;
-				corners[i].y = 0.0f;
+				corners[i].x = map_width + origin_x;
+				corners[i].y = 0.0f + origin_y;
 			}
 			if (i == 3){
-				corners[i].x = map_width;
-				corners[i].y = map_height;
+				corners[i].x = map_width + origin_x;
+				corners[i].y = map_height + origin_y;
 			}
 		}
 
-		// Rotate corners as image
+		// Rotate corners as image and move them to the origin
 		for (int i = 0; i < 4; i++){
 			float aux_x = corners[i].x * std::cos(alpha) - corners[i].y * std::sin(alpha);
 			float aux_y = corners[i].x * std::sin(alpha) + corners[i].y * std::cos(alpha);
