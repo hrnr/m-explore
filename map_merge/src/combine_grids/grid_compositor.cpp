@@ -58,23 +58,12 @@ nav_msgs::OccupancyGrid::Ptr GridCompositor::compose(
   for (auto& roi : rois) {
     corners.push_back(roi.tl());
     sizes.push_back(roi.size());
-    ROS_DEBUG("In Compose, roi.tl().x: %f", roi.tl().x * 0.05);
-    ROS_DEBUG("In Compose, roi.tl().y: %f", roi.tl().y * 0.05);
-	ROS_DEBUG("In Compose, roi.size().height: %f", roi.size().height * 0.05);
-	ROS_DEBUG("In Compose, roi.size().width: %f", roi.size().width * 0.05);
   }
   cv::Rect dst_roi = cv::detail::resultRoi(corners, sizes);
-  ROS_DEBUG("In Compose, dst_roi.height: %f", dst_roi.height * 1.0);
-  ROS_DEBUG("In Compose, dst_roi.width: %f", dst_roi.width * 1.0);
-  ROS_DEBUG("In Compose, dst_roi.x: %f", dst_roi.x * 0.05);
-  ROS_DEBUG("In Compose, dst_roi.y: %f", dst_roi.y * 0.05);
 
   result_grid->info.width = static_cast<uint>(dst_roi.width);
   result_grid->info.height = static_cast<uint>(dst_roi.height);
-  ROS_DEBUG("In Compose, result_grid->info.width: %i", result_grid->info.width);
-  ROS_DEBUG("In Compose, result_grid->info.height: %i", result_grid->info.height);
-  ROS_DEBUG("In Compose, dst_roi.height: %f", dst_roi.height * 1.0);
-  ROS_DEBUG("In Compose, dst_roi.width: %f", dst_roi.width * 1.0);
+
   result_grid->data.resize(static_cast<size_t>(dst_roi.area()), -1);
   // create view for opencv pointing to newly allocated grid
   cv::Mat result(dst_roi.size(), CV_8S, result_grid->data.data());

@@ -5,10 +5,10 @@
     <param name="merged_map_topic" value="map"/>
     <param name="world_frame" value="world"/>
     <param name="known_init_poses" value="false"/>
-    <param name="merging_rate" value="0.5"/>
+    <param name="merging_rate" value="0.2"/>
     <param name="discovery_rate" value="0.05"/>
     <param name="estimation_rate" value="0.1"/>
     <param name="publish_rate" value="1.0"/>
-    <param name="estimation_confidence" value="1.0"/>
+    <param name="estimation_confidence" value="0.6"/>
   </node>
 </launch>

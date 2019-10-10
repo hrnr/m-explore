@@ -61,6 +61,8 @@ bool MergingPipeline::estimateTransforms(FeatureType feature_type,
       cv::makePtr<cv::detail::AffineBestOf2NearestMatcher>();
   cv::Ptr<cv::detail::Estimator> estimator =
       cv::makePtr<cv::detail::AffineBasedEstimator>();
+//  cv::Ptr<cv::detail::Estimator> estimator =
+//        cv::makePtr<cv::detail::Estimator>();
   cv::Ptr<cv::detail::BundleAdjusterBase> adjuster =
       cv::makePtr<cv::detail::BundleAdjusterAffinePartial>();
 
@@ -73,6 +75,8 @@ bool MergingPipeline::estimateTransforms(FeatureType feature_type,
   image_features.reserve(images_.size());
   for (const cv::Mat& image : images_) {
     image_features.emplace_back();
+//    cv::Mat image_denoised;
+//    cv::fastNlMeansDenoising(image, image_denoised, 3, 7, 21);
     if (!image.empty()) {
       (*finder)(image, image_features.back());
     }
@@ -123,10 +127,10 @@ bool MergingPipeline::estimateTransforms(FeatureType feature_type,
   }
   ROS_DEBUG("optimizing global transforms");
   adjuster->setConfThresh(confidence);
-  //if (!(*adjuster)(image_features, pairwise_matches, transforms)) {
-  //  ROS_WARN("Bundle adjusting failed. Could not estimate transforms.");
-  //  return false;
-  //}
+//  if (!(*adjuster)(image_features, pairwise_matches, transforms)) {
+//    ROS_WARN("Bundle adjusting failed. Could not estimate transforms.");
+//    return false;
+//  }
 
   transforms_.clear();
   transforms_.resize(images_.size());
@@ -188,7 +192,6 @@ nav_msgs::OccupancyGrid::Ptr MergingPipeline::composeGrids()
   std::vector<cv::Size> sizes;
   sizes.reserve(images_.size());
   result = compositor.compose(imgs_warped, rois);
-  ROS_DEBUG("Just after getting results. IN COMPOSE GRIDS: Result map size: (%i, %i)", (result->info.width, result->info.height));
   roi_info_.clear();
   for (auto& roi : rois) {
 	  roi_info_.push_back(roi);
@@ -196,10 +199,6 @@ nav_msgs::OccupancyGrid::Ptr MergingPipeline::composeGrids()
 	  sizes.push_back(roi.size());
   }
   complete_roi_ = cv::detail::resultRoi(corners, sizes);
-  // TODO: CHECK WHY THE VALUE FROM result->info.height is WRONG
-  ROS_DEBUG("IN COMPOSE GRIDS: Complete roi: (%i, %i)", (complete_roi_.width, complete_roi_.height));
-  result->info.width = complete_roi_.width;
-  result->info.height = complete_roi_.height;
 
   // set correct resolution to output grid. use resolution of identity (works
   // for estimated trasforms), or any resolution (works for know_init_positions)
@@ -219,16 +218,12 @@ nav_msgs::OccupancyGrid::Ptr MergingPipeline::composeGrids()
     result->info.resolution = any_resolution;
   }
 
-  // set grid origin to its centre - Why?
-  result->info.origin.position.x = 0.0; // (result->info.width / 2.0) * double(result->info.resolution); //complete_roi_.x * double(result->info.resolution);
-  result->info.origin.position.y = 0.0; //(result->info.height / 2.0) * double(result->info.resolution); //complete_roi_.y * double(result->info.resolution);
+  // set grid origin to its centre - Facilitates transforms
+  result->info.origin.position.x = 0.0;
+  result->info.origin.position.y = 0.0;
   result->info.origin.orientation.w = 1.0;
-  int aux_width = result->info.width;
-  int aux_height = result->info.height;
-  ROS_DEBUG("IN COMPOSE GRIDS: Result map size: (%i, %i)", (aux_width, aux_height));
-  result_map_width = (float)aux_width * result->info.resolution; // in meters
-  result_map_height = (float)aux_height * result->info.resolution; // in meters
-  ROS_DEBUG("IN COMPOSE GRIDS: Result map size: (%f, %f)", (result_map_width, result_map_height));
+  result_map_width = (float)result->info.width * result->info.resolution; // in meters
+  result_map_height = (float)result->info.height * result->info.resolution; // in meters
 
   return result;
 }
@@ -240,53 +235,47 @@ std::vector<geometry_msgs::Transform> MergingPipeline::getTransforms() const
 
   geometry_msgs::Transform identity_quaternion;
   identity_quaternion.rotation.w = 1;
+  int loop_counter = 0;
+  double alpha;
+  float MinX = 9999.0;
+  float MinY = 9999.0;
+  bool wrong_transform = false;
+  std::vector<cv::Point2f> corners(4);
+  std::vector<cv::Point2f> bounding_box(4);
+  std::vector<cv::Point2f> biases(4);
+  std::vector<cv::Point2f> displacements(4);
 
-  ROS_DEBUG("IN GET_TRANSFORMS");
+  corners.clear();
+  bounding_box.clear();
+  biases.clear();
+  displacements.clear();
+
   for (auto& transform : transforms_) {
-    if (transform.empty()) {
-      result.emplace_back(identity_quaternion);
-      ROS_DEBUG("TRANSFORM EMPTY");
-      continue;
-    }
 
-    int loop_counter = 0;
-    float result_map_center_x = result_map_width / 2.0;
-    float result_map_center_y = result_map_height / 2.0;
-    bool is_ready = false;
-    if (result_map_width > 0.0 && result_map_height > 0.0){
-	    is_ready = true;
-    }
-    ROS_DEBUG("Result map size: (%f, %f)", ((float)result_map_width, (float)result_map_height));
-    std::vector<cv::Point2f> corners(4);
+	  if (transform.empty()) {
+		continue;
+	  }
 
-    ROS_DEBUG("TRANSFORM NOT EMPTY. LETS COMPUTE IT");
-
-    if (is_ready)
-    {
-    	ROS_DEBUG("INSIDE IF...");
-		// Required variables - Maps data
+	  if (result_map_width > 0.0 && result_map_height > 0.0){
 		float resolution = grids_[loop_counter]->info.resolution;
-		ROS_DEBUG("Resolution: %f", resolution);
 		float map_height = grids_[loop_counter]->info.height * resolution;
 		float map_width = grids_[loop_counter]->info.width * resolution;
-		ROS_DEBUG("Height and width");
-		ROS_DEBUG("Result map size: (%f, %f)", ((float)result_map_width, (float)result_map_height));
-		float center_bias_x = (roi_info_[loop_counter].x + complete_roi_.x) * resolution;
-		float center_bias_y = (roi_info_[loop_counter].y + complete_roi_.y) * resolution;
-		ROS_DEBUG("Center bias");
-	//	float y = grids_[loop_counter]->info.height * resolution;
-	//	float x = grids_[loop_counter]->info.width * resolution;
+		float origin_x = grids_[loop_counter]->info.origin.position.x;
+		float origin_y = grids_[loop_counter]->info.origin.position.y;
 
 		// our rotation is in fact only 2D, thus quaternion can be simplified
 		double a = transform.at<double>(0, 0);
 		double b = transform.at<double>(1, 0);
+		ROS_DEBUG("original cosinus: %f", a);
 		if (std::abs(a) > 1){
 			a = std::copysign(1, a);
+			wrong_transform = true;
 		}
-		double alpha = std::acos(a);
-		ROS_DEBUG("Rotated: %f", alpha);
+		alpha = std::acos(a);
+		ROS_DEBUG("cosinus modified: %f", a);
+		ROS_DEBUG("angle: %f", alpha);
 
-		// Add corners
+		// Create map corners
 		corners.clear();
 		for (int i = 0; i < 4; i++){
 			if (i == 0){
@@ -305,8 +294,6 @@ std::vector<geometry_msgs::Transform> MergingPipeline::getTransforms() const
 				corners[i].x = map_width;
 				corners[i].y = map_height;
 			}
-			ROS_DEBUG("Corner init x: %f", corners[i].x);
-			ROS_DEBUG("Corner init y: %f", corners[i].y);
 		}
 
 		// Rotate corners as image
@@ -317,55 +304,103 @@ std::vector<geometry_msgs::Transform> MergingPipeline::getTransforms() const
 			corners[i].y = aux_y;
 		}
 
-		ROS_ASSERT(transform.type() == CV_64F);
-		geometry_msgs::Transform ros_transform;
-
-		//Rotation distance - Only for the ones that rotate
-		//from the position of the turned corned (width,height) until the Origin (0.0)
-		//TODO: Instead of the turned corned (width, height). Do it with the corner that is more far from the origin!
-		if (std::abs(alpha) > 0.001){
-			ros_transform.translation.x = 0.0 - (map_width * std::cos(alpha) - map_height * std::sin(alpha));
-			ros_transform.translation.y = 0.0 - (map_width * std::sin(alpha) + map_height * std::cos(alpha));
-			ROS_DEBUG("Rotation distance x: %f", ros_transform.translation.x);
-			ROS_DEBUG("Rotation distance y: %f", ros_transform.translation.y);
-			// Corners displacement - This might be useless if the previous TODO is applied.
-			for (int i = 0; i < 4; i++){
-				corners[i].x = corners[i].x - center_bias_x + 0.0 - (map_width * std::cos(alpha) - map_height * std::sin(alpha));
-				corners[i].y = corners[i].y - center_bias_y + 0.0 - (map_width * std::sin(alpha) + map_height * std::cos(alpha));
-				// Check Corners out of result map
-				if (corners[i].x < 0.0){
-					ros_transform.translation.x = ros_transform.translation.x + std::abs(corners[i].x);
-					ROS_DEBUG("Corner out of bounds. Moved: %f", std::abs(corners[i].x));
-				}
-				if (corners[i].y < 0.0){
-					ros_transform.translation.y = ros_transform.translation.y + std::abs(corners[i].y);
-					ROS_DEBUG("Corner out of bounds. Moved: %f", std::abs(corners[i].y));
-				}
-				if (corners[i].x > result_map_width){
-					ros_transform.translation.x = ros_transform.translation.x - (corners[i].x - result_map_width);
-					ROS_DEBUG("Corner out of bounds. Moved: %f", - (corners[i].x - result_map_width));
-				}
-				if (corners[i].y > result_map_height){
-					ros_transform.translation.y = ros_transform.translation.y - (corners[i].y - result_map_height);
-					ROS_DEBUG("Corner out of bounds. Moved: %f", - (corners[i].y - result_map_height));
-				}
+		//Find the bounding box for the image rotated.
+		float max_x = -9999.9;
+		float max_y = -9999.9;
+		float min_x = 9999.9;
+		float min_y = 9999.9;
+		for (int i = 0; i < 4; i++){
+			if (corners[i].x > max_x) {
+				max_x = corners[i].x;
+			}
+			if (corners[i].y > max_y) {
+				max_y = corners[i].y;
+			}
+			if (corners[i].x < min_x) {
+				min_x = corners[i].x;
+			}
+			if (corners[i].y < min_y) {
+				min_y = corners[i].y;
+			}
+		}
+		// Bounding box order: TopLeft, TopRight, BottomRight and BottomLeft
+		for (int i = 0; i < 4; i++) {
+			if (i==0){
+				bounding_box[i].x = min_x;
+				bounding_box[i].y = max_y;
+			}
+			if (i==1){
+				bounding_box[i].x = max_x;
+				bounding_box[i].y = max_y;
+			}
+			if (i==2){
+				bounding_box[i].x = max_x;
+				bounding_box[i].y = min_y;
+			}
+			if (i==3){
+				bounding_box[i].x = min_x;
+				bounding_box[i].y = min_y;
 			}
 		}
 
-		// Adding center bias
-		ROS_DEBUG("center_bias_x: %f", center_bias_x);
-		ROS_DEBUG("center_bias_y: %f", center_bias_y);
-		ros_transform.translation.x = ros_transform.translation.x - center_bias_x;
-		ros_transform.translation.y = ros_transform.translation.y - center_bias_y;
-		// Apply bias to corners
-		for (int i = 0; i < 4; i++){
-			corners[i].x = corners[i].x - center_bias_x + 0.0 - (map_width * std::cos(alpha) - map_height * std::sin(alpha));
-			corners[i].y = corners[i].y - center_bias_y + 0.0 - (map_width * std::sin(alpha) + map_height * std::cos(alpha));
+		// Move the BottomLeft corner of the bounding box towards the BottomLeft corner of the main map
+		float bottom_left_dist_x;
+		float bottom_left_dist_y;
+		bottom_left_dist_x = 0.0 - bounding_box[3].x;
+		bottom_left_dist_y = 0.0 - bounding_box[3].y;
+		displacements[loop_counter].x = bottom_left_dist_x;
+		displacements[loop_counter].y = bottom_left_dist_y;
+
+
+		for (int i = 0; i < 4; i++) {
+			bounding_box[i].x = bounding_box[i].x + bottom_left_dist_x;
+			bounding_box[i].y = bounding_box[i].y + bottom_left_dist_y;
 		}
 
-		ros_transform.translation.z = 0.;
-		ROS_DEBUG("ros_transform.translation.x: %f", ros_transform.translation.x);
-		ROS_DEBUG("ros_transform.translation.y: %f", ros_transform.translation.y);
+		float center_bias_x = (roi_info_[loop_counter].x + complete_roi_.x) * resolution;
+		float center_bias_y = (roi_info_[loop_counter].y + complete_roi_.y) * resolution;
+		biases[loop_counter].x = center_bias_x;
+		biases[loop_counter].y = center_bias_y;
+
+		for (int i = 0; i < 4; i++) {
+			bounding_box[i].x = bounding_box[i].x + center_bias_x;
+			bounding_box[i].y = bounding_box[i].y + center_bias_y;
+			if (MinX > bounding_box[i].x) {
+				MinX = bounding_box[i].x;
+			}
+			if (MinY > bounding_box[i].y) {
+				MinY = bounding_box[i].y;
+			}
+		}
+		loop_counter = loop_counter + 1;
+	  }
+  }
+
+
+  loop_counter = 0;
+  for (auto& transform : transforms_) {
+    if (transform.empty() || wrong_transform) {
+      result.emplace_back(identity_quaternion);
+      continue;
+    }
+
+    if (result_map_width > 0.0 && result_map_height > 0.0)
+    {
+
+		// our rotation is in fact only 2D, thus quaternion can be simplified
+		double a = transform.at<double>(0, 0);
+		double b = transform.at<double>(1, 0);
+		if (std::abs(a) > 1){
+			a = std::copysign(1, a);
+		}
+		alpha = std::acos(a);
+
+		ROS_ASSERT(transform.type() == CV_64F);
+		geometry_msgs::Transform ros_transform;
+
+		ros_transform.translation.x = displacements[loop_counter].x + biases[loop_counter].x - MinX;
+		ros_transform.translation.y = displacements[loop_counter].y + biases[loop_counter].y - MinY;
+
 		// our rotation is in fact only 2D, thus quaternion can be simplified
 		ros_transform.rotation.w = std::cos(alpha * 0.5); //std::sqrt(2. + 2. * a) * 0.5;
 		ros_transform.rotation.x = 0.;
@@ -375,140 +410,6 @@ std::vector<geometry_msgs::Transform> MergingPipeline::getTransforms() const
 		result.push_back(ros_transform);
 		loop_counter = loop_counter + 1;
     }
-	// Adding map size bias
-	// TODO: Properly define this bias
-
-
-
-//    if (resolution > 0 && result_map_height > 0.0){
-//    	//float a = roi_info_[loop_counter].x;
-//        //float b = complete_roi_.x;
-//    	if (roi_info_.size() > loop_counter) {
-////    		if (!rotated_pi)
-////    		{
-////    		y = grids_[loop_counter]->info.height * resolution;
-////			x = grids_[loop_counter]->info.width * resolution;
-////			center_bias_x = (roi_info_[loop_counter].x + complete_roi_.x) * resolution;
-////			center_bias_y = (roi_info_[loop_counter].y + complete_roi_.y) * resolution;
-////			center_bias_x = (roi_info_[loop_counter].x - complete_roi_.x) * resolution;
-////			center_bias_y = (roi_info_[loop_counter].y - complete_roi_.y) * resolution;
-//    		if (std::abs(alpha) > 0.01) {
-//    			ROS_DEBUG("Rotation distance x: %f", map_width * std::cos(alpha) - map_height * std::sin(alpha));
-//				ROS_DEBUG("Rotation distance y: %f", map_width * std::sin(alpha) + map_height * std::cos(alpha));
-//		    	ROS_DEBUG("center_bias_x: %f", center_bias_x);
-//				ROS_DEBUG("center_bias_y: %f", center_bias_y);
-//    			ros_transform.translation.x = - center_bias_x + 0.0 - (map_width * std::cos(alpha) - map_height * std::sin(alpha));
-//				ros_transform.translation.y = - center_bias_y + 0.0 - (map_width * std::sin(alpha) + map_height * std::cos(alpha));
-//				for (int i = 0; i < 4; i++){
-//					corners[i].x = corners[i].x - center_bias_x + 0.0 - (map_width * std::cos(alpha) - map_height * std::sin(alpha));
-//					corners[i].y = corners[i].y - center_bias_y + 0.0 - (map_width * std::sin(alpha) + map_height * std::cos(alpha));
-//				}
-//				if (ros_transform.translation.y < 0.0){
-//					ros_transform.translation.y = ros_transform.translation.y + map_height;
-//					for (int i = 0; i < 4; i++){
-////						p.x = p.x - center_bias_x + 0.0 - (x * std::cos(alpha) - y * std::sin(alpha));
-//						corners[i].y = corners[i].y + map_height;
-//					}
-////					ros_transform.translation.x = ros_transform.translation.x + x + (result_map_width - grids_[loop_counter]->info.width * resolution) * 0.5;
-//				} else if (ros_transform.translation.x < 0.0) {
-//					ros_transform.translation.x = ros_transform.translation.x + map_width;
-//					for (int i = 0; i < 4; i++){
-//						corners[i].x = corners[i].x + map_width;
-//					}
-////					ros_transform.translation.y = ros_transform.translation.y + y + (result_map_height - grids_[loop_counter]->info.height * resolution) * 0.5;
-////					ros_transform.translation.x = ros_transform.translation.x + x + (result_map_height - grids_[loop_counter]->info.height * resolution) * 0.5;
-//				}
-//				if (map_width/map_height > 1.0) {
-//					ros_transform.translation.x = ros_transform.translation.x - (result_map_width - map_width) * 0.25;
-//					ros_transform.translation.y = ros_transform.translation.y - (result_map_height - map_height) * 0.25;
-//					ROS_DEBUG("Map center_bias_x: %f", (result_map_width - map_width) * 0.25);
-//					ROS_DEBUG("Map center_bias_y: %f", (result_map_height - map_height) * 0.25);
-//					ROS_DEBUG("Corners: ");
-//					for (int i = 0; i < 4; i++){
-//						corners[i].x = corners[i].x - (result_map_width - map_width) * 0.25;
-//						corners[i].y = corners[i].y - (result_map_height - map_height) * 0.25;
-//						ROS_DEBUG("Corner x: %f", corners[i].x);
-//						ROS_DEBUG("Corner y: %f", corners[i].y);
-//					}
-//				}
-//				if (map_height/map_width > 1.0){
-//					// FIXME: Maybe it does not depend on relation y/x but el quadrant del que prové... (o de la relació entre formes)
-//					ros_transform.translation.x = ros_transform.translation.x + (result_map_width - map_width) * 0.25;
-//					ros_transform.translation.y = ros_transform.translation.y + (result_map_height - map_height) * 0.5;
-//					ROS_DEBUG("Map center_bias_x: %f", (result_map_height - map_width) * 0.25);
-//					ROS_DEBUG("Map center_bias_y: %f", (result_map_width - map_height) * 0.25);
-//					for (int i = 0; i < 4; i++){
-//						corners[i].x = corners[i].x - (result_map_height - map_width) * 0.25;
-//						corners[i].y = corners[i].y - (result_map_width- map_height) * 0.25;
-//						ROS_DEBUG("Corner x: %f", corners[i].x);
-//						ROS_DEBUG("Corner y: %f", corners[i].y);
-//					}
-//				}
-//				for (int i = 0; i < 4; i++){
-//					if (corners[i].x < 0.0){
-//						ros_transform.translation.x = ros_transform.translation.x + std::abs(corners[i].x);
-//					}
-//					if (corners[i].y < 0.0){
-//						ros_transform.translation.y = ros_transform.translation.y + std::abs(corners[i].y);
-//					}
-//					if (corners[i].x > result_map_width){
-//						ros_transform.translation.x = ros_transform.translation.x - (corners[i].x - result_map_width);
-//					}
-//					if (corners[i].y > result_map_height){
-//						ros_transform.translation.y = ros_transform.translation.y - (corners[i].y - result_map_height);
-//					}
-//				}
-//    		} else {
-//    			ROS_DEBUG("Rotation distance x: %f", result_map_center_x - (result_map_center_x * std::cos(alpha) - result_map_center_y * std::sin(alpha)));
-//				ROS_DEBUG("Rotation distance y: %f", result_map_center_y - (result_map_center_x * std::sin(alpha) + result_map_center_y * std::cos(alpha)));
-//		    	ROS_DEBUG("center_bias_x: %f", center_bias_x);
-//				ROS_DEBUG("center_bias_y: %f", center_bias_y);
-//    			ros_transform.translation.x = - center_bias_x + result_map_center_x - (result_map_center_x * std::cos(alpha) - result_map_center_y * std::sin(alpha));
-//    			ros_transform.translation.y = - center_bias_y + result_map_center_y - (result_map_center_x * std::sin(alpha) + result_map_center_y * std::cos(alpha));
-//    			for (int i = 0; i < 4; i++){
-//    				corners[i].x = corners[i].x - center_bias_x + result_map_center_x - (result_map_center_x * std::cos(alpha) - result_map_center_y * std::sin(alpha));
-//    				corners[i].y = corners[i].y - center_bias_y + result_map_center_y - (result_map_center_x * std::sin(alpha) + result_map_center_y * std::cos(alpha));
-//					ROS_DEBUG("Corner x: %f", corners[i].x);
-//					ROS_DEBUG("Corner y: %f", corners[i].y);
-//    			}
-//    		}
-//    	} else {
-//    		center_bias_x = 0.0;
-//    		center_bias_y = 0.0;
-//    	}
-////    	if (transform.at<double>(0, 2) == 0.0 && transform.at<double>(1, 2) == 0.0) {
-////    		ros_transform.translation.x = center_bias_x;
-////    		ros_transform.translation.y = center_bias_y;
-////    	} else {
-////    		ros_transform.translation.x = -0.5*result_map_width + center_bias_x;
-////    		ros_transform.translation.y = -0.5*result_map_height + center_bias_y;
-////    	}
-//    	//center_bias_x = 0.5 * (result_map_width - grids_[loop_counter]->info.width * resolution);
-//    	//center_bias_y = 0.5 * (result_map_height - grids_[loop_counter]->info.height * resolution);
-////    	ros_transform.translation.x = transform.at<double>(0, 2) * resolution + center_bias_x;
-////		ros_transform.translation.y = transform.at<double>(1, 2) * resolution + center_bias_y;
-//
-//
-//
-//		//ROS_DEBUG("ros_transform - result_map_center_x: %f", grids_[loop_counter]->info.origin.position.x);
-//		//ROS_DEBUG("ros_transform - result_map_center_y: %f", grids_[loop_counter]->info.origin.position.y);
-//    } else {
-//    	ros_transform.translation.x = 0.0; //transform.at<double>(0, 2);
-//		ros_transform.translation.y = 0.0; //transform.at<double>(1, 2);
-//    }
-//    ros_transform.translation.z = 0.;
-//
-//
-//    ROS_DEBUG("ros_transform.translation.x: %f", ros_transform.translation.x);
-//	ROS_DEBUG("ros_transform.translation.y: %f", ros_transform.translation.y);
-//    // our rotation is in fact only 2D, thus quaternion can be simplified
-//    ros_transform.rotation.w = std::cos(alpha * 0.5); //std::sqrt(2. + 2. * a) * 0.5;
-//    ros_transform.rotation.x = 0.;
-//    ros_transform.rotation.y = 0.;
-//    ros_transform.rotation.z = std::sin(alpha * 0.5); //std::copysign(std::sqrt(2. - 2. * a) * 0.5, b);
-//
-//    result.push_back(ros_transform);
-//    loop_counter = loop_counter + 1;
   }
 
   return result;

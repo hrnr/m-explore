@@ -218,7 +218,7 @@ void MapMerge::poseEstimation()
 void MapMerge::fullMapUpdate(const nav_msgs::OccupancyGrid::ConstPtr& msg,
                              MapSubscription& subscription)
 {
-  ROS_DEBUG("received full map update");
+  //ROS_DEBUG("received full map update");
   std::lock_guard<std::mutex> lock(subscription.mutex);
   if (subscription.readonly_map &&
       subscription.readonly_map->header.stamp > msg->header.stamp) {
@@ -431,7 +431,7 @@ std::vector<geometry_msgs::TransformStamped> MapMerge::stampTransforms(const std
 		geometry_msgs::TransformStamped tf_stamped;
 		tf_stamped.transform = transform;
 		tf_stamped.child_frame_id = map_frames_[ii];
-		ROS_DEBUG("map frame_name %s: ", tf_stamped.child_frame_id.c_str());
+		ROS_DEBUG("map frame_name: %s", tf_stamped.child_frame_id.c_str());
 		tf_stamped.header.frame_id = world_frame_;
 		tf_stamped.header.stamp = ros::Time::now();
 		output.push_back(tf_stamped);
@@ -455,6 +455,7 @@ void MapMerge::spin()
   estimation_thr.join();
   merging_thr.join();
   subscribing_thr.join();
+  publish_tf_thr.join();
 }
 
 }  // namespace map_merge
