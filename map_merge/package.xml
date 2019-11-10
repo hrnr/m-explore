@@ -14,11 +14,12 @@
   <buildtool_depend>catkin</buildtool_depend>
 
   <depend>roscpp</depend>
-  <depend>opencv3</depend>
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>map_msgs</depend>
   <depend>tf2_geometry_msgs</depend>
+  <!-- used to get OpenCV -->
+  <depend>image_geometry</depend>
 
   <test_depend>roslaunch</test_depend>
   <test_depend>rosunit</test_depend>
