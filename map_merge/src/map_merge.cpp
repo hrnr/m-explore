@@ -218,7 +218,6 @@ void MapMerge::poseEstimation()
 void MapMerge::fullMapUpdate(const nav_msgs::OccupancyGrid::ConstPtr& msg,
                              MapSubscription& subscription)
 {
-  //ROS_DEBUG("received full map update");
   std::lock_guard<std::mutex> lock(subscription.mutex);
   if (subscription.readonly_map &&
       subscription.readonly_map->header.stamp > msg->header.stamp) {
@@ -230,7 +229,6 @@ void MapMerge::fullMapUpdate(const nav_msgs::OccupancyGrid::ConstPtr& msg,
   subscription.map_frame = msg->header.frame_id;
   subscription.readonly_map = msg;
   subscription.writable_map = nullptr;
-  //ROS_DEBUG("Frame of map added: %s", subscription.map_frame.c_str());
 }
 
 void MapMerge::partialMapUpdate(
