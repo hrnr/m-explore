@@ -63,6 +63,7 @@ nav_msgs::OccupancyGrid::Ptr GridCompositor::compose(
 
   result_grid->info.width = static_cast<uint>(dst_roi.width);
   result_grid->info.height = static_cast<uint>(dst_roi.height);
+
   result_grid->data.resize(static_cast<size_t>(dst_roi.area()), -1);
   // create view for opencv pointing to newly allocated grid
   cv::Mat result(dst_roi.size(), CV_8S, result_grid->data.data());

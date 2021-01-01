@@ -43,6 +43,7 @@
 #include <nav_msgs/OccupancyGrid.h>
 
 #include <opencv2/core/utility.hpp>
+#include <opencv2/photo.hpp>
 
 namespace combine_grids
 {
@@ -69,6 +70,10 @@ private:
   std::vector<nav_msgs::OccupancyGrid::ConstPtr> grids_;
   std::vector<cv::Mat> images_;
   std::vector<cv::Mat> transforms_;
+  float result_map_width = 0.0;
+  float result_map_height = 0.0;
+  std::vector<cv::Rect> roi_info_;
+  cv::Rect complete_roi_;
 };
 
 template <typename InputIt>
@@ -88,8 +93,11 @@ void MergingPipeline::feed(InputIt grids_begin, InputIt grids_end)
       grids_.push_back(*it);
       /* convert to opencv images. it creates only a view for opencv and does
        * not copy or own actual data. */
-      images_.emplace_back((*it)->info.height, (*it)->info.width, CV_8UC1,
-                           const_cast<signed char*>((*it)->data.data()));
+      cv::Mat image_denoised;
+      cv::Mat image((*it)->info.height, (*it)->info.width, CV_8UC1,
+              const_cast<signed char*>((*it)->data.data()));
+          cv::fastNlMeansDenoising(image, image_denoised, 10, 9, 15);
+      images_.emplace_back(image_denoised);
     } else {
       grids_.emplace_back();
       images_.emplace_back();
