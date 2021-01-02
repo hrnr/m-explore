@@ -2,6 +2,18 @@
 Changelog for package multirobot_map_merge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* support for ROS Melodic
+* bugfix: zero resolution of the merged grid for known initial posiiton
+* bugfix: estimation_confidence parameter had no effect
+* map_merge: set origin of merged grid in its centre
+* map_merge: add new launch file
+  * map_merge with 2 maps served by map_server
+* bugfix: ensure that we never output map with 0 resolution
+* bugfix: nullptr derefence while setting resolution of output grid
+* Contributors: Jiri Horner
+
 2.1.1 (2017-12-16)
 ------------------
 * fix bugs in CMakeLists.txt: install nodes in packages, so they get shipped in debian packages. fixes `#11 <https://github.com/hrnr/m-explore/issues/11>`_

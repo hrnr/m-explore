@@ -2,6 +2,11 @@
 Changelog for package explore_lite
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* support for ROS Melodic
+* Contributors: Jiri Horner
+
 2.1.1 (2017-12-16)
 ------------------
 * explore: fix min_frontier_size bug
