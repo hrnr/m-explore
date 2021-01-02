@@ -2,8 +2,8 @@
 Changelog for package explore_lite
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.1.2 (2021-01-02)
+------------------
 * support for ROS Melodic
 * Contributors: Jiri Horner
 

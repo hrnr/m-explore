@@ -2,8 +2,8 @@
 Changelog for package multirobot_map_merge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.1.2 (2021-01-02)
+------------------
 * support for ROS Melodic
 * bugfix: zero resolution of the merged grid for known initial posiiton
 * bugfix: estimation_confidence parameter had no effect
