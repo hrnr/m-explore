@@ -73,7 +73,7 @@ bool MergingPipeline::estimateTransforms(FeatureType feature_type,
   for (const cv::Mat& image : images_) {
     image_features.emplace_back();
     if (!image.empty()) {
-      computeImageFeatures(finder, image, image_features.back());
+      cv::detail::computeImageFeatures(finder, image, image_features.back());
     }
   }
 

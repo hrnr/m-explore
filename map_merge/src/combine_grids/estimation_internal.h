@@ -39,6 +39,8 @@
 
 #include <combine_grids/merging_pipeline.h>
 
+#include <cassert>
+
 #include <opencv2/core/utility.hpp>
 #include <opencv2/features2d.hpp>
 #include <opencv2/imgcodecs.hpp>
@@ -65,6 +67,9 @@ static inline cv::Ptr<cv::Feature2D> chooseFeatureFinder(FeatureType type)
       return cv::AKAZE::create();
 #endif
   }
+
+  assert(false);
+  return nullptr;
 }
 
 static inline void writeDebugMatchingInfo(
