@@ -2,8 +2,8 @@
 Changelog for package multirobot_map_merge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.1.3 (2021-01-03)
+------------------
 * add missing dependencies to catkin_package calls
 * update map_merge for OpenCV 4
 * Contributors: Jiri Horner
