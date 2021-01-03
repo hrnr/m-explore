@@ -2,6 +2,12 @@
 Changelog for package multirobot_map_merge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* add missing dependencies to catkin_package calls
+* update map_merge for OpenCV 4
+* Contributors: Jiri Horner
+
 2.1.2 (2021-01-02)
 ------------------
 * support for ROS Melodic

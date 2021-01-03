@@ -2,6 +2,11 @@
 Changelog for package explore_lite
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* add missing dependencies to catkin_package calls
+* Contributors: Jiri Horner
+
 2.1.2 (2021-01-02)
 ------------------
 * support for ROS Melodic
