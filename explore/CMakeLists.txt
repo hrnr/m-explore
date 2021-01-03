@@ -21,12 +21,16 @@ find_package(catkin REQUIRED COMPONENTS
 ###################################
 catkin_package(
   CATKIN_DEPENDS
+    actionlib
     actionlib_msgs
+    costmap_2d
     geometry_msgs
     map_msgs
     move_base_msgs
     nav_msgs
+    roscpp
     std_msgs
+    tf
     visualization_msgs
 )
 

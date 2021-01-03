@@ -32,7 +32,10 @@ catkin_package(
     geometry_msgs
     map_msgs
     nav_msgs
+    roscpp
     tf2_geometry_msgs
+  DEPENDS
+    OpenCV
 )
 
 ###########
