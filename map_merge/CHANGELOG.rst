@@ -2,8 +2,8 @@
 Changelog for package multirobot_map_merge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.1.4 (2021-01-07)
+------------------
 * use C++14
 * support both OpenCV 3 and OpenCV 4 (support Debian Buster)
 * Contributors: Jiri Horner

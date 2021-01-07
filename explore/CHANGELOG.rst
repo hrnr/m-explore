@@ -2,8 +2,8 @@
 Changelog for package explore_lite
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+2.1.4 (2021-01-07)
+------------------
 * use C++14
 * Contributors: Jiri Horner
 
