@@ -2,6 +2,11 @@
 Changelog for package explore_lite
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* use C++14
+* Contributors: Jiri Horner
+
 2.1.3 (2021-01-03)
 ------------------
 * add missing dependencies to catkin_package calls
