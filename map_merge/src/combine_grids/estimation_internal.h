@@ -40,19 +40,22 @@
 #include <combine_grids/merging_pipeline.h>
 
 #include <cassert>
-
 #include <opencv2/core/utility.hpp>
+#include <opencv2/core/version.hpp>
 #include <opencv2/features2d.hpp>
 #include <opencv2/imgcodecs.hpp>
+#include <opencv2/stitching/detail/matchers.hpp>
 
 #ifdef HAVE_OPENCV_XFEATURES2D
-#include "opencv2/xfeatures2d/nonfree.hpp"
+#include <opencv2/xfeatures2d/nonfree.hpp>
 #endif
 
 namespace combine_grids
 {
 namespace internal
 {
+#if CV_VERSION_MAJOR >= 4
+
 static inline cv::Ptr<cv::Feature2D> chooseFeatureFinder(FeatureType type)
 {
   switch (type) {
@@ -69,8 +72,28 @@ static inline cv::Ptr<cv::Feature2D> chooseFeatureFinder(FeatureType type)
   }
 
   assert(false);
-  return nullptr;
+  return {};
 }
+
+#else  // (CV_VERSION_MAJOR < 4)
+
+static inline cv::Ptr<cv::detail::FeaturesFinder>
+chooseFeatureFinder(FeatureType type)
+{
+  switch (type) {
+    case FeatureType::AKAZE:
+      return cv::makePtr<cv::detail::AKAZEFeaturesFinder>();
+    case FeatureType::ORB:
+      return cv::makePtr<cv::detail::OrbFeaturesFinder>();
+    case FeatureType::SURF:
+      return cv::makePtr<cv::detail::SurfFeaturesFinder>();
+  }
+
+  assert(false);
+  return {};
+}
+
+#endif  // CV_VERSION_MAJOR >= 4
 
 static inline void writeDebugMatchingInfo(
     const std::vector<cv::Mat>& images,

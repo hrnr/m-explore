@@ -15,8 +15,12 @@ find_package(Boost REQUIRED COMPONENTS thread)
 
 # OpenCV is required for merging without initial positions
 find_package(OpenCV REQUIRED)
+if("${OpenCV_VERSION}" VERSION_LESS "3.0")
+  message(FATAL_ERROR "This package needs OpenCV >= 3.0")
+endif()
 if("${OpenCV_VERSION}" VERSION_LESS "4.0")
-  message(FATAL_ERROR "This package needs OpenCV >= 4.0")
+  message(WARNING "This package supports OpenCV 3, but some features may not be "
+    "available. Upgrade to OpenCV 4 to take advantage of all features.")
 endif()
 
 ################################################
