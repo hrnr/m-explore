@@ -65,7 +65,7 @@ static inline cv::Ptr<cv::Feature2D> chooseFeatureFinder(FeatureType type)
       return cv::ORB::create();
     case FeatureType::SURF:
 #ifdef HAVE_OPENCV_XFEATURES2D
-      return xfeatures2d::SURF::create();
+      return cv::xfeatures2d::SURF::create();
 #else
       return cv::AKAZE::create();
 #endif
