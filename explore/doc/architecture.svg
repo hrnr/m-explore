@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.0//EN" "http://www.w3.org/TR/2001/PR-SVG-20010719/DTD/svg10.dtd">
+<svg width="36cm" height="5cm" viewBox="83 211 718 93" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <g>
+    <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x1="665.005" y1="269.59" x2="462.071" y2="264.7"/>
+    <polygon style="fill: #000000" points="664.884,274.589 681,269.976 665.125,264.592 "/>
+    <polygon style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" points="664.884,274.589 681,269.976 665.125,264.592 "/>
+    <text font-size="12.7998" style="fill: #000000;text-anchor:middle;font-family:sans-serif;font-style:normal;font-weight:normal" x="566.493" y="284.816">movement commands</text>
+  </g>
+  <g>
+    <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x1="314.095" y1="271.294" x2="139.4" y2="290"/>
+    <polygon style="fill: #000000" points="314.627,276.265 330.004,269.59 313.562,266.322 "/>
+    <polygon style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" points="314.627,276.265 330.004,269.59 313.562,266.322 "/>
+    <text font-size="12.7998" style="fill: #000000;text-anchor:middle;font-family:sans-serif;font-style:normal;font-weight:normal" x="238" y="300">nav_msgs/OccupancyGrid</text>
+  </g>
+  <g>
+    <polygon style="fill: #ffffff" points="332,245 342,235 461.1,235 461.1,271 451.1,281 332,281 332,245 "/>
+    <polygon style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" points="332,245 342,235 461.1,235 461.1,271 451.1,281 332,281 332,245 "/>
+    <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x1="332" y1="245" x2="451.1" y2="245"/>
+    <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x1="451.1" y1="245" x2="461.1" y2="235"/>
+    <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x1="451.1" y1="245" x2="451.1" y2="281"/>
+    <text font-size="12.7998" style="fill: #000000;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="342" y="266.9">
+      <tspan x="342" y="266.9">explore_lite</tspan>
+    </text>
+    <line style="fill: none; fill-opacity:0; stroke-width: 1; stroke: #000000" x1="342" y1="269.9" x2="416.1" y2="269.9"/>
+  </g>
+  <g>
+    <polygon style="fill: #ffffff" points="682,234 692,224 799,224 799,260 789,270 682,270 682,234 "/>
+    <polygon style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" points="682,234 692,224 799,224 799,260 789,270 682,270 682,234 "/>
+    <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x1="682" y1="234" x2="789" y2="234"/>
+    <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x1="789" y1="234" x2="799" y2="224"/>
+    <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x1="789" y1="234" x2="789" y2="270"/>
+    <text font-size="12.7998" style="fill: #000000;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="692" y="255.9">
+      <tspan x="692" y="255.9">move_base</tspan>
+    </text>
+    <line style="fill: none; fill-opacity:0; stroke-width: 1; stroke: #000000" x1="692" y1="258.9" x2="764.75" y2="258.9"/>
+  </g>
+  <g>
+    <polygon style="fill: #ffffff" points="84,254 94,244 149.4,244 149.4,280 139.4,290 84,290 84,254 "/>
+    <polygon style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" points="84,254 94,244 149.4,244 149.4,280 139.4,290 84,290 84,254 "/>
+    <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x1="84" y1="254" x2="139.4" y2="254"/>
+    <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x1="139.4" y1="254" x2="149.4" y2="244"/>
+    <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x1="139.4" y1="254" x2="139.4" y2="290"/>
+    <text font-size="12.7998" style="fill: #000000;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="94" y="275.9">
+      <tspan x="94" y="275.9">SLAM</tspan>
+    </text>
+    <line style="fill: none; fill-opacity:0; stroke-width: 1; stroke: #000000" x1="94" y1="278.9" x2="129.4" y2="278.9"/>
+  </g>
+  <g>
+    <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x1="314.009" y1="260.232" x2="139.4" y2="254"/>
+    <polygon style="fill: #000000" points="313.83,265.229 329.999,260.803 314.187,255.236 "/>
+    <polygon style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" points="313.83,265.229 329.999,260.803 314.187,255.236 "/>
+    <text font-size="12.7998" style="fill: #000000;text-anchor:middle;font-family:sans-serif;font-style:normal;font-weight:normal" x="240" y="235">map_msgs/OccupancyGridUpdate</text>
+  </g>
+  <g>
+    <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x1="468.081" y1="244.191" x2="682" y2="234"/>
+    <polygon style="fill: #000000" points="467.843,239.197 452.099,244.952 468.319,249.185 "/>
+    <polygon style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" points="467.843,239.197 452.099,244.952 468.319,249.185 "/>
+    <text font-size="12.7998" style="fill: #000000;text-anchor:middle;font-family:sans-serif;font-style:normal;font-weight:normal" x="566.504" y="223.434">geometry_msgs/PolygonStamped</text>
+  </g>
+</svg>
